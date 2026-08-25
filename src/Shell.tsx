@@ -6,6 +6,7 @@ const links = [
   ["/offers", "方案"],
   ["/studio", "工作室"],
   ["/agent", "Agent"],
+  ["/tutor", "中文家教"],
 ] as const;
 
 export function Shell() {

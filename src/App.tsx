@@ -5,6 +5,7 @@ import { OffersPage } from "./OffersPage";
 import { RunwayPage } from "./RunwayPage";
 import { Shell } from "./Shell";
 import { StudioPage } from "./StudioPage";
+import { TutorPage } from "./TutorPage";
 import { StudioProvider } from "./studio-context";
 
 export function App() {
@@ -18,6 +19,7 @@ export function App() {
             <Route path="/offers" element={<OffersPage />} />
             <Route path="/studio" element={<StudioPage />} />
             <Route path="/agent" element={<AgentPage />} />
+            <Route path="/tutor" element={<TutorPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>
