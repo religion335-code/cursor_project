@@ -6,6 +6,7 @@ import {
   formatRemain,
   grillTimes,
   jobProgress,
+  mountableIds,
   remainingMs,
   slotView,
   waitingJobs,
@@ -13,7 +14,7 @@ import {
 import { useShop } from "./ShopContext";
 
 export function RackView() {
-  const { jobs, demoSpeed, setDemoSpeed } = useShop();
+  const { jobs, orders, demoSpeed, forcedMount, setDemoSpeed } = useShop();
   const [tick, setTick] = useState(() => Date.now());
 
   useEffect(() => {
@@ -23,6 +24,9 @@ export function RackView() {
 
   const slots = slotView(jobs);
   const waiting = waitingJobs(jobs);
+  const allowed = mountableIds(orders, tick, forcedMount);
+  const waitingTime = waiting.filter((job) => !allowed.has(job.orderId)).length;
+  const waitingSlot = waiting.filter((job) => allowed.has(job.orderId)).length;
   const roasting = jobs.filter((job) => job.slot !== null && job.doneAt === null).length;
   const accelerated = demoSpeed > 1;
 
@@ -33,8 +37,8 @@ export function RackView() {
           <p className="kicker">減少人力</p>
           <h2>自動烤肉架</h2>
           <p className="muted">
-            六鉤馬達翻面，不用人站在炭前面盯。肉上鉤之後自己轉、自己計時；時間到亮燈，去盛飯對號。
-            同時最多 {SLOT_COUNT} 份，滿了就排隊等空鉤。
+            六鉤馬達翻面，不用人站在炭前面盯。接近取餐才自動上鉤；時間到亮燈，去盛飯對號。
+            同時最多 {SLOT_COUNT} 份。隔夜預訂不會半夜先烤。
           </p>
         </div>
         <label className="speed-toggle">
@@ -55,7 +59,9 @@ export function RackView() {
             key={index}
             className={job ? "hook on" : "hook"}
             role="listitem"
-            aria-label={job ? `${grillTimes[job.itemId]?.short ?? "肉"} 第 ${index + 1} 鉤` : `空鉤 ${index + 1}`}
+            aria-label={
+              job ? `${grillTimes[job.itemId]?.short ?? "肉"} 第 ${index + 1} 鉤` : `空鉤 ${index + 1}`
+            }
           >
             <small>鉤 {index + 1}</small>
             {job ? (
@@ -76,7 +82,9 @@ export function RackView() {
 
       <p className="rack-meta">
         烤著 {roasting}／{SLOT_COUNT}
-        {waiting.length > 0 ? ` · 等空鉤 ${waiting.length} 份` : " · 沒有排隊"}
+        {waitingSlot > 0 ? ` · 等空鉤 ${waitingSlot} 份` : ""}
+        {waitingTime > 0 ? ` · 等取餐時間 ${waitingTime} 份` : ""}
+        {waiting.length === 0 ? " · 沒有排隊" : ""}
         {accelerated ? " · 示範加速中" : " · 現場速度"}
       </p>
     </section>

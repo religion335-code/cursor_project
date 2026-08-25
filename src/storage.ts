@@ -9,6 +9,7 @@ export const emptyStore: ShopStore = {
   soldOut: [],
   jobs: [],
   demoSpeed: DEFAULT_DEMO_SPEED,
+  forcedMount: [],
 };
 
 export function loadStore(): ShopStore {
@@ -26,6 +27,7 @@ export function loadStore(): ShopStore {
         typeof parsed.demoSpeed === "number" && parsed.demoSpeed > 0
           ? parsed.demoSpeed
           : DEFAULT_DEMO_SPEED,
+      forcedMount: Array.isArray(parsed.forcedMount) ? parsed.forcedMount : [],
     };
   } catch {
     return emptyStore;

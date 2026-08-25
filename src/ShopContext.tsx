@@ -28,6 +28,7 @@ type ShopContextValue = {
   soldOut: string[];
   jobs: GrillJob[];
   demoSpeed: number;
+  forcedMount: string[];
   lastReceipt: PickupOrder | null;
   addToCart: (itemId: string) => void;
   changeQty: (key: string, qty: number) => void;
@@ -38,6 +39,7 @@ type ShopContextValue = {
   setOrderStatus: (id: string, status: OrderStatus) => void;
   toggleSoldOut: (itemId: string) => void;
   setDemoSpeed: (speed: number) => void;
+  startEarly: (orderId: string) => void;
   resetShop: () => void;
   dismissReceipt: () => void;
 };
@@ -107,10 +109,16 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     const nowMs = Date.now();
     setStore((prev) => {
       let jobs = prev.jobs;
-      if (status === "cancelled") jobs = dropOrderJobs(jobs, id);
+      if (status === "cancelled") {
+        jobs = dropOrderJobs(jobs, id);
+      }
       if (status === "ready") jobs = finishOrderJobs(jobs, id, nowMs);
       const orders = prev.orders.map((order) => (order.id === id ? { ...order, status } : order));
-      return { ...prev, jobs, orders: syncOrderStatus(orders, jobs) };
+      const forcedMount =
+        status === "cancelled"
+          ? prev.forcedMount.filter((orderId) => orderId !== id)
+          : prev.forcedMount;
+      return { ...prev, jobs, forcedMount, orders: syncOrderStatus(orders, jobs) };
     });
   }, []);
 
@@ -125,6 +133,16 @@ export function ShopProvider({ children }: { children: ReactNode }) {
 
   const setDemoSpeed = useCallback((speed: number) => {
     setStore((prev) => ({ ...prev, demoSpeed: speed > 0 ? speed : 1 }));
+  }, []);
+
+  const startEarly = useCallback((orderId: string) => {
+    const nowMs = Date.now();
+    setStore((prev) => {
+      const forcedMount = prev.forcedMount.includes(orderId)
+        ? prev.forcedMount
+        : [...prev.forcedMount, orderId];
+      return tickRack({ ...prev, forcedMount }, nowMs);
+    });
   }, []);
 
   const resetShop = useCallback(() => {
@@ -142,6 +160,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       soldOut: store.soldOut,
       jobs: store.jobs,
       demoSpeed: store.demoSpeed,
+      forcedMount: store.forcedMount,
       lastReceipt,
       addToCart,
       changeQty,
@@ -152,6 +171,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       setOrderStatus,
       toggleSoldOut,
       setDemoSpeed,
+      startEarly,
       resetShop,
       dismissReceipt,
     }),
@@ -168,6 +188,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       setOrderStatus,
       toggleSoldOut,
       setDemoSpeed,
+      startEarly,
       resetShop,
       dismissReceipt,
     ],

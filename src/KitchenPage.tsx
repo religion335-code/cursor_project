@@ -2,7 +2,7 @@ import { cartTotal, lineKey, sauceLabels } from "./cart";
 import { itemById, itemsByCategory } from "./menu";
 import { ntd } from "./money";
 import { statusLabels, kitchenOrders } from "./orders";
-import { waitingJobs } from "./rack";
+import { waitingJobs, shouldMount } from "./rack";
 import { RackView } from "./RackView";
 import { shop, shopStatus } from "./shop";
 import { useShop } from "./ShopContext";
@@ -19,7 +19,8 @@ const nextLabel: Partial<Record<OrderStatus, string>> = {
 };
 
 export function KitchenPage() {
-  const { now, orders, soldOut, jobs, setOrderStatus, toggleSoldOut, resetShop } = useShop();
+  const { now, orders, soldOut, jobs, forcedMount, setOrderStatus, toggleSoldOut, resetShop, startEarly } =
+    useShop();
   const status = shopStatus(now);
   const today = kitchenOrders(orders, now);
   const active = today.filter((order) => order.status !== "done" && order.status !== "cancelled");
@@ -42,7 +43,7 @@ export function KitchenPage() {
           <h2>取餐隊列（{active.length}）</h2>
           {today.length === 0 ? (
             <p className="muted">
-              還沒有待取的外帶單。客人送出後，肉會自動上鉤；湯跟飲料不用上架。
+              還沒有待取的外帶單。接近取餐才自動上鉤；湯跟飲料不用上架。
             </p>
           ) : (
             <div className="stack">
@@ -63,12 +64,23 @@ export function KitchenPage() {
                       </li>
                     ))}
                   </ul>
-                  {order.status === "queued" &&
-                  waiting.some((job) => job.orderId === order.id) ? (
-                    <p className="muted">架滿，等空鉤自動上。</p>
+                  {order.status === "queued" && waiting.some((job) => job.orderId === order.id) ? (
+                    shouldMount(order, now) || forcedMount.includes(order.id) ? (
+                      <p className="muted">架滿，等空鉤自動上。</p>
+                    ) : (
+                      <p className="muted">還沒到取餐時間，到點會自動上鉤。示範可提前開烤。</p>
+                    )
                   ) : null}
                   <p className="price">{ntd(order.total)}</p>
                   <div className="actions">
+                    {order.status === "queued" &&
+                    waiting.some((job) => job.orderId === order.id) &&
+                    !shouldMount(order, now) &&
+                    !forcedMount.includes(order.id) ? (
+                      <button type="button" className="btn" onClick={() => startEarly(order.id)}>
+                        提前上鉤
+                      </button>
+                    ) : null}
                     {nextStatus[order.status] ? (
                       <button
                         type="button"

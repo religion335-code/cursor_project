@@ -54,4 +54,5 @@ export type ShopStore = {
   soldOut: string[];
   jobs: GrillJob[];
   demoSpeed: number;
+  forcedMount: string[];
 };

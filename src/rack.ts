@@ -1,3 +1,5 @@
+import { minutesFromHhmm } from "./money";
+import { taipeiClock } from "./shop";
 import type { GrillJob, PickupOrder, ShopStore } from "./types";
 
 export const SLOT_COUNT = 6;
@@ -21,6 +23,44 @@ export function durationMs(itemId: string, demoSpeed: number): number {
   if (!spec) return 0;
   const speed = demoSpeed > 0 ? demoSpeed : 1;
   return Math.round((spec.minutes * 60 * 1000) / speed);
+}
+
+export function needsGrill(order: PickupOrder): boolean {
+  return order.lines.some((line) => isGrillable(line.itemId));
+}
+
+export function maxGrillMinutes(order: PickupOrder): number {
+  let max = 0;
+  for (const line of order.lines) {
+    const spec = grillTimes[line.itemId];
+    if (spec) max = Math.max(max, spec.minutes);
+  }
+  return max;
+}
+
+/** Start the motors a few minutes before pickup so plating is not late. */
+export function shouldMount(order: PickupOrder, now: Date): boolean {
+  if (!needsGrill(order)) return false;
+  const clock = taipeiClock(now);
+  if (order.isoDate < clock.isoDate) return true;
+  if (order.isoDate > clock.isoDate) return false;
+  const pickup = minutesFromHhmm(order.pickupAt);
+  const lead = maxGrillMinutes(order) + 2;
+  return clock.minutes >= pickup - lead;
+}
+
+export function mountableIds(
+  orders: PickupOrder[],
+  nowMs: number,
+  forcedMount: string[],
+): Set<string> {
+  const forced = new Set(forcedMount);
+  const now = new Date(nowMs);
+  const ids = new Set<string>();
+  for (const order of orders) {
+    if (forced.has(order.id) || shouldMount(order, now)) ids.add(order.id);
+  }
+  return ids;
 }
 
 export function jobsFromOrder(order: PickupOrder, demoSpeed: number): GrillJob[] {
@@ -69,11 +109,13 @@ export function mountWaitingJobs(
   jobs: GrillJob[],
   nowMs: number,
   slotCount = SLOT_COUNT,
+  allowedIds?: Set<string>,
 ): GrillJob[] {
   const next = jobs.map((job) => ({ ...job }));
   const taken = occupiedSlots(next);
   const waiting = next.filter((job) => job.doneAt === null && job.startedAt === null);
   for (const job of waiting) {
+    if (allowedIds && !allowedIds.has(job.orderId)) continue;
     let free = -1;
     for (let slot = 0; slot < slotCount; slot += 1) {
       if (!taken.has(slot)) {
@@ -89,8 +131,12 @@ export function mountWaitingJobs(
   return next;
 }
 
-export function advanceRack(jobs: GrillJob[], nowMs: number): GrillJob[] {
-  return mountWaitingJobs(completeDueJobs(jobs, nowMs), nowMs);
+export function advanceRack(
+  jobs: GrillJob[],
+  nowMs: number,
+  allowedIds?: Set<string>,
+): GrillJob[] {
+  return mountWaitingJobs(completeDueJobs(jobs, nowMs), nowMs, SLOT_COUNT, allowedIds);
 }
 
 export function dropOrderJobs(jobs: GrillJob[], orderId: string): GrillJob[] {
@@ -127,6 +173,9 @@ export function syncOrderStatus(orders: PickupOrder[], jobs: GrillJob[]): Pickup
     if (order.status === "cancelled" || order.status === "done") return order;
     const mine = jobs.filter((job) => job.orderId === order.id);
     if (mine.length === 0) {
+      if (needsGrill(order)) {
+        return order.status === "queued" ? order : { ...order, status: "queued" as const };
+      }
       return order.status === "ready" ? order : { ...order, status: "ready" as const };
     }
     if (mine.every((job) => job.doneAt !== null)) {
@@ -141,7 +190,11 @@ export function syncOrderStatus(orders: PickupOrder[], jobs: GrillJob[]): Pickup
 
 export function tickRack(store: ShopStore, nowMs: number): ShopStore {
   const seeded = ensureJobs(store.orders, store.jobs, store.demoSpeed);
-  const jobs = advanceRack(seeded, nowMs);
+  const jobs = advanceRack(
+    seeded,
+    nowMs,
+    mountableIds(store.orders, nowMs, store.forcedMount),
+  );
   const orders = syncOrderStatus(store.orders, jobs);
   return { ...store, jobs, orders };
 }
