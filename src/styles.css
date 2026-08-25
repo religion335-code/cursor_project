@@ -298,6 +298,7 @@ a.btn.ghost {
   text-align: left;
   padding: 10px 8px;
   border-bottom: 1px solid var(--line);
+  overflow-wrap: anywhere;
 }
 
 .kanban {
@@ -344,6 +345,8 @@ a.btn.ghost {
 .chat {
   display: grid;
   gap: 12px;
+  max-height: 480px;
+  overflow-y: auto;
 }
 
 .bubble {

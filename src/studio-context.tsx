@@ -18,6 +18,7 @@ type StudioContextValue = {
   moveProject: (id: string, status: Project["status"]) => void;
   addQuote: (quote: Quote) => void;
   addMessage: (role: "user" | "agent", text: string) => void;
+  clearMessages: () => void;
   toggleCheck: (id: string) => void;
   loadSample: () => void;
   reset: () => void;
@@ -66,6 +67,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
             },
           ],
         })),
+      clearMessages: () => setState((prev) => ({ ...prev, messages: [] })),
       toggleCheck: (id) =>
         setState((prev) => ({
           ...prev,

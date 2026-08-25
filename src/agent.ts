@@ -235,7 +235,7 @@ export function advise(question: string, state: StudioState): AgentReply {
     });
     return {
       text: [
-        "已依目前套餐起草報價。細節可到「方案」頁再改客戶名稱與聯絡。",
+        "已依目前套餐起草報價，並可到「工作室」查看已存清單。",
         "",
         quoteText(quote),
       ].join("\n"),

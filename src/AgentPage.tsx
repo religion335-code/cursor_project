@@ -3,7 +3,7 @@ import { SUGGESTED_PROMPTS, advise } from "./agent";
 import { useStudio } from "./studio-context";
 
 export function AgentPage() {
-  const { state, addMessage, addQuote } = useStudio();
+  const { state, addMessage, addQuote, clearMessages } = useStudio();
   const [draft, setDraft] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -40,6 +40,11 @@ export function AgentPage() {
             {prompt}
           </button>
         ))}
+        {state.messages.length > 0 ? (
+          <button type="button" onClick={clearMessages}>
+            清除對話
+          </button>
+        ) : null}
       </div>
 
       <section className="card chat" style={{ marginTop: 16, minHeight: 280 }}>

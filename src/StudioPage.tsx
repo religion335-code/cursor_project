@@ -119,6 +119,30 @@ export function StudioPage() {
         </div>
       </section>
 
+      {state.quotes.length > 0 ? (
+        <div className="card" style={{ marginTop: 16 }}>
+          <h2>已存報價</h2>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>客戶</th>
+                <th>方案</th>
+                <th>金額</th>
+              </tr>
+            </thead>
+            <tbody>
+              {state.quotes.map((quote) => (
+                <tr key={quote.id}>
+                  <td>{quote.client}</td>
+                  <td>{offerById(quote.offerId).name}</td>
+                  <td>{ntd(quote.amount)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+
       <div className="kanban" style={{ marginTop: 16 }}>
         {columns.map((column) => (
           <section key={column.id}>
@@ -150,30 +174,6 @@ export function StudioPage() {
           </section>
         ))}
       </div>
-
-      {state.quotes.length > 0 ? (
-        <div className="card" style={{ marginTop: 16 }}>
-          <h2>已存報價</h2>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>客戶</th>
-                <th>方案</th>
-                <th>金額</th>
-              </tr>
-            </thead>
-            <tbody>
-              {state.quotes.map((quote) => (
-                <tr key={quote.id}>
-                  <td>{quote.client}</td>
-                  <td>{offerById(quote.offerId).name}</td>
-                  <td>{ntd(quote.amount)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
     </article>
   );
 }
