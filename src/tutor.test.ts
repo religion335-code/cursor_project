@@ -62,4 +62,14 @@ describe("tutor demo replies", () => {
     const reply = demoReply("How do I order bubble tea?");
     expect(reply.text).toMatch(/珍珠奶茶/);
   });
+
+  it("gives directions guidance when asked where the bathroom is", () => {
+    const reply = demoReply("廁所在哪裡？");
+    expect(reply.text).toMatch(/請問/);
+  });
+
+  it("gives price-asking phrases when asked about cost", () => {
+    const reply = demoReply("多少錢");
+    expect(reply.text).toMatch(/多少錢/);
+  });
 });
