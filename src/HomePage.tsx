@@ -38,6 +38,19 @@ export function HomePage() {
         <GrillBowl className="hero-bowl" />
       </section>
 
+      <section className="card ink">
+        <p className="kicker">減少人力</p>
+        <h2>自動烤肉架</h2>
+        <p>
+          六鉤轉爐，馬達翻面、到時亮燈。肉上鉤之後不用人盯火；尖峰少一個人站在炭前面，改去盛飯跟對號。
+        </p>
+        <div className="actions">
+          <Link className="btn" to="/kitchen">
+            打開烤肉架
+          </Link>
+        </div>
+      </section>
+
       <section>
         <h2>常點</h2>
         <div className="row thirds">

@@ -461,6 +461,106 @@ a.btn.ghost {
   opacity: 0.62;
 }
 
+.rack-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.rack-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.speed-toggle {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 14px;
+  max-width: 16rem;
+}
+
+.rack {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  padding: 16px;
+  border-radius: 20px 20px 8px 8px;
+  background: linear-gradient(180deg, #2a1b10 0%, #1c1410 100%);
+  color: var(--rice);
+}
+
+.hook {
+  min-height: 132px;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(255, 250, 243, 0.06);
+  border: 1px dashed rgba(232, 184, 109, 0.25);
+}
+
+.hook.on {
+  border-style: solid;
+  border-color: var(--flame);
+  background: rgba(194, 65, 12, 0.28);
+  animation: hook-glow 1.6s ease-in-out infinite;
+}
+
+.hook small {
+  color: var(--gold);
+  letter-spacing: 0.08em;
+}
+
+.hook b {
+  font-family: "Noto Serif TC", serif;
+}
+
+.remain {
+  font-size: 13px;
+  color: #ffedd5;
+}
+
+.hook .track {
+  display: block;
+  height: 6px;
+  border-radius: 99px;
+  background: rgba(255, 250, 243, 0.15);
+  overflow: hidden;
+}
+
+.hook .track i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold), var(--flame));
+}
+
+.coals {
+  height: 10px;
+  margin-top: -10px;
+  border-radius: 0 0 16px 16px;
+  background: linear-gradient(90deg, #7c2d12, #ea580c, #f59e0b, #ea580c, #7c2d12);
+  box-shadow: 0 8px 18px rgba(234, 88, 12, 0.35);
+}
+
+.rack-meta {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+@keyframes hook-glow {
+  0%,
+  100% {
+    box-shadow: none;
+  }
+  50% {
+    box-shadow: 0 0 0 1px rgba(234, 88, 12, 0.4);
+  }
+}
+
 .cart-dock {
   display: none;
 }
@@ -500,8 +600,14 @@ a.btn.ghost {
   .row.thirds,
   .row.halves,
   .menu-grid,
-  .line {
+  .line,
+  .rack,
+  .rack-head {
     grid-template-columns: 1fr;
+  }
+
+  .rack {
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .main {

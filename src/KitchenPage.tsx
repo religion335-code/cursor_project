@@ -1,44 +1,49 @@
 import { cartTotal, lineKey, sauceLabels } from "./cart";
 import { itemById, itemsByCategory } from "./menu";
 import { ntd } from "./money";
-import { kitchenOrders, statusLabels } from "./orders";
+import { statusLabels, kitchenOrders } from "./orders";
+import { waitingJobs } from "./rack";
+import { RackView } from "./RackView";
 import { shop, shopStatus } from "./shop";
 import { useShop } from "./ShopContext";
 import type { OrderStatus } from "./types";
 
 const nextStatus: Partial<Record<OrderStatus, OrderStatus>> = {
-  queued: "grilling",
   grilling: "ready",
   ready: "done",
 };
 
 const nextLabel: Partial<Record<OrderStatus, string>> = {
-  queued: "開始烤",
-  grilling: "可取餐",
+  grilling: "跳過計時",
   ready: "已取",
 };
 
 export function KitchenPage() {
-  const { now, orders, soldOut, setOrderStatus, toggleSoldOut, resetShop } = useShop();
+  const { now, orders, soldOut, jobs, setOrderStatus, toggleSoldOut, resetShop } = useShop();
   const status = shopStatus(now);
   const today = kitchenOrders(orders, now);
   const active = today.filter((order) => order.status !== "done" && order.status !== "cancelled");
+  const waiting = waitingJobs(jobs);
 
   return (
     <div className="page">
       <header className="page-head">
         <p className="kicker">店內看板</p>
-        <h1>今日炭火</h1>
+        <h1>自動炭火</h1>
         <p className="lede">
-          {shop.name} · {status.label}。訂單跟售完狀態存在這台瀏覽器，給櫃台對號，不是雲端後台。
+          {shop.name} · {status.label}。烤肉架自己翻面計時，人顧盛飯跟對號。資料存在這台瀏覽器。
         </p>
       </header>
+
+      <RackView />
 
       <div className="row halves">
         <section>
           <h2>取餐隊列（{active.length}）</h2>
           {today.length === 0 ? (
-            <p className="muted">還沒有待取的外帶單。打烊後預訂的下一爐也會列在這裡。</p>
+            <p className="muted">
+              還沒有待取的外帶單。客人送出後，肉會自動上鉤；湯跟飲料不用上架。
+            </p>
           ) : (
             <div className="stack">
               {today.map((order) => (
@@ -58,6 +63,10 @@ export function KitchenPage() {
                       </li>
                     ))}
                   </ul>
+                  {order.status === "queued" &&
+                  waiting.some((job) => job.orderId === order.id) ? (
+                    <p className="muted">架滿，等空鉤自動上。</p>
+                  ) : null}
                   <p className="price">{ntd(order.total)}</p>
                   <div className="actions">
                     {nextStatus[order.status] ? (

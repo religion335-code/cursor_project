@@ -9,14 +9,25 @@ import {
 } from "react";
 import { addLine, setNote, setQty, setSauce } from "./cart";
 import { placeOrder, type DraftOrder } from "./orders";
-import { loadStore, saveStore } from "./storage";
-import type { CartLine, OrderStatus, PickupOrder, Sauce } from "./types";
+import {
+  DEFAULT_DEMO_SPEED,
+  dropOrderJobs,
+  finishOrderJobs,
+  jobsFromOrder,
+  rackFingerprint,
+  syncOrderStatus,
+  tickRack,
+} from "./rack";
+import { emptyStore, loadStore, saveStore } from "./storage";
+import type { CartLine, GrillJob, OrderStatus, PickupOrder, Sauce } from "./types";
 
 type ShopContextValue = {
   now: Date;
   cart: CartLine[];
   orders: PickupOrder[];
   soldOut: string[];
+  jobs: GrillJob[];
+  demoSpeed: number;
   lastReceipt: PickupOrder | null;
   addToCart: (itemId: string) => void;
   changeQty: (key: string, qty: number) => void;
@@ -26,6 +37,7 @@ type ShopContextValue = {
   checkout: (draft: DraftOrder) => { ok: true; order: PickupOrder } | { ok: false; error: string };
   setOrderStatus: (id: string, status: OrderStatus) => void;
   toggleSoldOut: (itemId: string) => void;
+  setDemoSpeed: (speed: number) => void;
   resetShop: () => void;
   dismissReceipt: () => void;
 };
@@ -38,8 +50,18 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   const [lastReceipt, setLastReceipt] = useState<PickupOrder | null>(null);
 
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(new Date()), 30_000);
-    return () => window.clearInterval(timer);
+    const clock = window.setInterval(() => setNow(new Date()), 30_000);
+    const rack = window.setInterval(() => {
+      setStore((prev) => {
+        const next = tickRack(prev, Date.now());
+        if (rackFingerprint(next) === rackFingerprint(prev)) return prev;
+        return next;
+      });
+    }, 250);
+    return () => {
+      window.clearInterval(clock);
+      window.clearInterval(rack);
+    };
   }, []);
 
   useEffect(() => {
@@ -73,19 +95,23 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     const result = placeOrder(store.orders, store.cart, draft, new Date());
     if (!result.ok) return result;
     setLastReceipt(result.order);
-    setStore((prev) => ({
-      ...prev,
-      cart: [],
-      orders: [result.order, ...prev.orders],
-    }));
+    const nowMs = Date.now();
+    setStore((prev) => {
+      const jobs = [...prev.jobs, ...jobsFromOrder(result.order, prev.demoSpeed)];
+      return tickRack({ ...prev, cart: [], orders: [result.order, ...prev.orders], jobs }, nowMs);
+    });
     return result;
   }, [store]);
 
   const setOrderStatus = useCallback((id: string, status: OrderStatus) => {
-    setStore((prev) => ({
-      ...prev,
-      orders: prev.orders.map((order) => (order.id === id ? { ...order, status } : order)),
-    }));
+    const nowMs = Date.now();
+    setStore((prev) => {
+      let jobs = prev.jobs;
+      if (status === "cancelled") jobs = dropOrderJobs(jobs, id);
+      if (status === "ready") jobs = finishOrderJobs(jobs, id, nowMs);
+      const orders = prev.orders.map((order) => (order.id === id ? { ...order, status } : order));
+      return { ...prev, jobs, orders: syncOrderStatus(orders, jobs) };
+    });
   }, []);
 
   const toggleSoldOut = useCallback((itemId: string) => {
@@ -97,8 +123,12 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const setDemoSpeed = useCallback((speed: number) => {
+    setStore((prev) => ({ ...prev, demoSpeed: speed > 0 ? speed : 1 }));
+  }, []);
+
   const resetShop = useCallback(() => {
-    setStore({ cart: [], orders: [], soldOut: [] });
+    setStore({ ...emptyStore, demoSpeed: DEFAULT_DEMO_SPEED });
     setLastReceipt(null);
   }, []);
 
@@ -110,6 +140,8 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       cart: store.cart,
       orders: store.orders,
       soldOut: store.soldOut,
+      jobs: store.jobs,
+      demoSpeed: store.demoSpeed,
       lastReceipt,
       addToCart,
       changeQty,
@@ -119,6 +151,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       checkout,
       setOrderStatus,
       toggleSoldOut,
+      setDemoSpeed,
       resetShop,
       dismissReceipt,
     }),
@@ -134,6 +167,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       checkout,
       setOrderStatus,
       toggleSoldOut,
+      setDemoSpeed,
       resetShop,
       dismissReceipt,
     ],

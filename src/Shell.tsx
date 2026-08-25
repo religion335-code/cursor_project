@@ -53,9 +53,9 @@ export function Shell() {
           {shop.name} · {shop.address}
         </p>
         <p className="muted">
-          週一至週六午餐、晚餐兩段營業，週日公休。店內看板給現場用，資料存在這台瀏覽器。
+          週一至週六午餐、晚餐兩段營業，週日公休。自動烤肉架給現場用，資料存在這台瀏覽器。
         </p>
-        <NavLink to="/kitchen">店內看板</NavLink>
+        <NavLink to="/kitchen">烤肉架／店內看板</NavLink>
       </footer>
     </div>
   );

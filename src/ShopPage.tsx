@@ -63,6 +63,12 @@ export function ShopPage() {
             烤肉醬偏鹹香。怕鹹請在外帶單選少醬，或多配白飯跟菜脯。排骨有時醬會厚一點。
           </p>
         </article>
+        <article className="card">
+          <h3>誰在烤？</h3>
+          <p className="muted">
+            店裡用自動轉烤架。肉上鉤之後馬達翻面、時間到亮燈。人顧盛飯、對號、收錢，不用多一個人盯火。
+          </p>
+        </article>
       </section>
     </div>
   );

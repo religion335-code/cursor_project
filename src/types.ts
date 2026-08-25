@@ -36,8 +36,22 @@ export type PickupOrder = {
   status: OrderStatus;
 };
 
+export type GrillJob = {
+  id: string;
+  orderId: string;
+  itemId: string;
+  sauce: Sauce;
+  note: string;
+  slot: number | null;
+  startedAt: number | null;
+  durationMs: number;
+  doneAt: number | null;
+};
+
 export type ShopStore = {
   cart: CartLine[];
   orders: PickupOrder[];
   soldOut: string[];
+  jobs: GrillJob[];
+  demoSpeed: number;
 };
