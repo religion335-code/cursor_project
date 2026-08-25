@@ -89,13 +89,13 @@ export function TutorPage() {
       <span className="kicker">MVP · AI 中文口說家教</span>
       <h1>中文家教</h1>
       <p className="lede">
-        給歐美學習者的台灣中文對話練習。用英文或中文開口，AI 會回覆中文、附拼音與英文對照，並即時糾正用詞。
+        給歐美學習者的台灣中文對話練習。用英文或中文開口，Gemini 會回覆中文、附拼音與英文對照，並即時糾正用詞。
         免費每天 {FREE_DAILY_LIMIT} 句，超過就升級——這樣免費使用者不會燒光你的 token。
       </p>
 
       <div className="tutor-status">
         <span className={`badge ${live ? "badge-live" : "badge-demo"}`}>
-          {live ? "連線模式（你的 API key）" : "示範模式（離線腳本）"}
+          {live ? "連線模式（Gemini）" : "示範模式（離線腳本）"}
         </span>
         {state.pro ? (
           <span className="badge badge-pro">Pro · 無限練習</span>
@@ -161,14 +161,14 @@ export function TutorPage() {
       )}
 
       <details className="card tutor-settings" style={{ marginTop: 16 }}>
-        <summary>連線設定與工具</summary>
+        <summary>Gemini 連線設定與工具</summary>
         <p className="muted">
-          填入你自己的 OpenAI 相容 API key（存在這個瀏覽器，不上傳），就會從示範腳本切換成真正的 LLM 家教。
-          沒填的話維持離線示範模式。
+          填入你自己的 Gemini API key（在 Google AI Studio 免費取得，存在這個瀏覽器、不上傳），
+          就會從示範腳本切換成真正的 Gemini 家教。沒填的話維持離線示範模式。
         </p>
         <div className="form" style={{ marginTop: 10 }}>
           <label>
-            API Base URL
+            Gemini API Base URL
             <input
               value={state.config.baseUrl}
               placeholder={DEFAULT_CONFIG.baseUrl}
@@ -176,11 +176,11 @@ export function TutorPage() {
             />
           </label>
           <label>
-            API Key
+            Gemini API Key
             <input
               type="password"
               value={state.config.apiKey}
-              placeholder="sk-..."
+              placeholder="AIza..."
               onChange={(event) => saveConfig({ apiKey: event.target.value })}
             />
           </label>

@@ -42,9 +42,9 @@ export type TutorState = {
 export const FREE_DAILY_LIMIT = 5;
 
 export const DEFAULT_CONFIG: LlmConfig = {
-  baseUrl: "https://api.openai.com/v1",
+  baseUrl: "https://generativelanguage.googleapis.com/v1beta",
   apiKey: "",
-  model: "gpt-4o-mini",
+  model: "gemini-2.5-flash",
 };
 
 export const SUGGESTED_OPENERS = [
@@ -197,57 +197,107 @@ export function makeTurn(
 
 const SYSTEM_PROMPT =
   "You are a friendly Taiwan Mandarin tutor for an English-speaking beginner. " +
-  "Reply ONLY with strict JSON: {\"reply\": string (Traditional Chinese, one or two short sentences), " +
-  "\"pinyin\": string (Hanyu pinyin with tone marks), \"english\": string (English translation), " +
-  "\"corrections\": [{\"original\": string, \"suggestion\": string, \"note\": string}] } . " +
+  "Reply ONLY with strict JSON matching the schema: reply (Traditional Chinese, one or two short sentences), " +
+  "pinyin (Hanyu pinyin with tone marks), english (English translation), " +
+  "corrections (array of {original, suggestion, note}). " +
   "Use Taiwan usage (繁體字、台灣詞彙). Keep it encouraging and short. " +
   "If the learner made mistakes, add corrections; otherwise return an empty array.";
+
+// Gemini 結構化輸出的 schema：搭配 responseMimeType=application/json 才能保證回傳合法 JSON。
+const GEMINI_RESPONSE_SCHEMA = {
+  type: "object",
+  properties: {
+    reply: { type: "string" },
+    pinyin: { type: "string" },
+    english: { type: "string" },
+    corrections: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          original: { type: "string" },
+          suggestion: { type: "string" },
+          note: { type: "string" },
+        },
+        required: ["original", "suggestion", "note"],
+      },
+    },
+  },
+  required: ["reply", "pinyin", "english", "corrections"],
+  propertyOrdering: ["reply", "pinyin", "english", "corrections"],
+} as const;
+
+export type GeminiResponse = {
+  candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+};
 
 export function hasLiveConfig(config: LlmConfig): boolean {
   return config.apiKey.trim().length > 0;
 }
 
-// 連線模式：呼叫 OpenAI 相容 API。需要使用者自己的 key（存在瀏覽器）。
-export async function llmReply(
+// 純函式：組出 Gemini generateContent 請求，方便測試（不需要網路）。
+export function buildGeminiRequest(
   config: LlmConfig,
   history: TutorTurn[],
   text: string,
-): Promise<Omit<TutorTurn, "id" | "role" | "createdAt">> {
-  const messages = [
-    { role: "system", content: SYSTEM_PROMPT },
+): { url: string; headers: Record<string, string>; body: string } {
+  const contents = [
     ...history.slice(-8).map((turn) => ({
-      role: turn.role === "learner" ? "user" : "assistant",
-      content: turn.text,
+      role: turn.role === "learner" ? "user" : "model",
+      parts: [{ text: turn.text }],
     })),
-    { role: "user", content: text },
+    { role: "user", parts: [{ text }] },
   ];
 
-  const response = await fetch(`${config.baseUrl.replace(/\/$/, "")}/chat/completions`, {
-    method: "POST",
+  const base = config.baseUrl.replace(/\/$/, "");
+  return {
+    url: `${base}/models/${config.model}:generateContent`,
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${config.apiKey}`,
+      "x-goog-api-key": config.apiKey,
     },
     body: JSON.stringify({
-      model: config.model,
-      messages,
-      temperature: 0.6,
-      response_format: { type: "json_object" },
+      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      contents,
+      generationConfig: {
+        temperature: 0.6,
+        responseMimeType: "application/json",
+        responseSchema: GEMINI_RESPONSE_SCHEMA,
+      },
     }),
-  });
+  };
+}
 
-  if (!response.ok) {
-    throw new Error(`LLM 回應錯誤：${response.status}`);
-  }
+// 從模型輸出裡挖出 JSON（即使被 ```json 包住也能處理）。
+function extractJsonObject(raw: string): string {
+  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = fenced ? fenced[1] : raw;
+  const start = candidate.indexOf("{");
+  const end = candidate.lastIndexOf("}");
+  if (start >= 0 && end > start) return candidate.slice(start, end + 1);
+  return candidate;
+}
 
-  const data = await response.json();
-  const content: string = data?.choices?.[0]?.message?.content ?? "{}";
-  const parsed = JSON.parse(content) as {
+// 純函式：把 Gemini 回應轉成一則 tutor turn 的內容。
+export function parseGeminiReply(
+  data: GeminiResponse,
+): Omit<TutorTurn, "id" | "role" | "createdAt"> {
+  const text = (data?.candidates?.[0]?.content?.parts ?? [])
+    .map((part) => part.text ?? "")
+    .join("")
+    .trim();
+
+  let parsed: {
     reply?: string;
     pinyin?: string;
     english?: string;
     corrections?: Correction[];
-  };
+  } = {};
+  try {
+    parsed = JSON.parse(extractJsonObject(text));
+  } catch {
+    parsed = { reply: text || "（沒有收到回覆）" };
+  }
 
   return {
     text: parsed.reply ?? "（沒有收到回覆）",
@@ -255,4 +305,26 @@ export async function llmReply(
     english: parsed.english,
     corrections: Array.isArray(parsed.corrections) ? parsed.corrections : [],
   };
+}
+
+// 連線模式：呼叫 Gemini API。需要使用者自己的 key（存在瀏覽器）。
+export async function llmReply(
+  config: LlmConfig,
+  history: TutorTurn[],
+  text: string,
+): Promise<Omit<TutorTurn, "id" | "role" | "createdAt">> {
+  const request = buildGeminiRequest(config, history, text);
+  const response = await fetch(request.url, {
+    method: "POST",
+    headers: request.headers,
+    body: request.body,
+  });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(`Gemini 回應錯誤：${response.status} ${detail.slice(0, 200)}`);
+  }
+
+  const data = (await response.json()) as GeminiResponse;
+  return parseGeminiReply(data);
 }
