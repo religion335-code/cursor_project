@@ -321,8 +321,15 @@ export async function llmReply(
   });
 
   if (!response.ok) {
-    const detail = await response.text().catch(() => "");
-    throw new Error(`Gemini 回應錯誤：${response.status} ${detail.slice(0, 200)}`);
+    const raw = await response.text().catch(() => "");
+    let message = raw.slice(0, 200);
+    try {
+      const parsed = JSON.parse(raw) as { error?: { message?: string } };
+      if (parsed?.error?.message) message = parsed.error.message;
+    } catch {
+      // 不是 JSON 就用原始文字。
+    }
+    throw new Error(`Gemini 回應錯誤（${response.status}）：${message}`);
   }
 
   const data = (await response.json()) as GeminiResponse;
