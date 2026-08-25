@@ -72,6 +72,25 @@ describe("placeOrder", () => {
     expect(first.order.id).toBe("YL-0825-001");
     expect(first.order.total).toBe(110);
     expect(first.order.status).toBe("queued");
-    expect(nextOrderId([first.order], tuesdayLunch)).toBe("YL-0825-002");
+    expect(nextOrderId([first.order], "2026-08-25")).toBe("YL-0825-002");
+  });
+
+  it("numbers a next-day pickup by the pickup date, not the order time", () => {
+    const night = new Date("2026-08-25T20:05:00+08:00");
+    const result = placeOrder(
+      [],
+      addLine([], "pork-loin"),
+      {
+        customerName: "陳先生",
+        phone: "0912345678",
+        isoDate: "2026-08-26",
+        window: "lunch",
+        pickupAt: "10:30",
+      },
+      night,
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.order.id).toBe("YL-0826-001");
   });
 });

@@ -1,7 +1,7 @@
 import { cartTotal, lineKey, sauceLabels } from "./cart";
 import { itemById, itemsByCategory } from "./menu";
 import { ntd } from "./money";
-import { statusLabels, todaysOrders } from "./orders";
+import { kitchenOrders, statusLabels } from "./orders";
 import { shop, shopStatus } from "./shop";
 import { useShop } from "./ShopContext";
 import type { OrderStatus } from "./types";
@@ -21,7 +21,7 @@ const nextLabel: Partial<Record<OrderStatus, string>> = {
 export function KitchenPage() {
   const { now, orders, soldOut, setOrderStatus, toggleSoldOut, resetShop } = useShop();
   const status = shopStatus(now);
-  const today = todaysOrders(orders, now);
+  const today = kitchenOrders(orders, now);
   const active = today.filter((order) => order.status !== "done" && order.status !== "cancelled");
 
   return (
@@ -38,7 +38,7 @@ export function KitchenPage() {
         <section>
           <h2>取餐隊列（{active.length}）</h2>
           {today.length === 0 ? (
-            <p className="muted">今天還沒有外帶單。客人在「外帶」送出後會出現在這裡。</p>
+            <p className="muted">還沒有待取的外帶單。打烊後預訂的下一爐也會列在這裡。</p>
           ) : (
             <div className="stack">
               {today.map((order) => (
@@ -48,7 +48,7 @@ export function KitchenPage() {
                     <span className="tag">{statusLabels[order.status]}</span>
                   </div>
                   <p>
-                    {order.pickupAt} · {order.customerName} · {order.phone}
+                    {order.isoDate} {order.pickupAt} · {order.customerName} · {order.phone}
                   </p>
                   <ul className="plain">
                     {order.lines.map((line) => (

@@ -2,8 +2,8 @@ import { cartTotal } from "./cart";
 import { availableSlots, taipeiClock } from "./shop";
 import type { CartLine, PickupOrder, ServiceWindowId } from "./types";
 
-export function nextOrderId(existing: PickupOrder[], now: Date): string {
-  const { mmdd } = taipeiClock(now);
+export function nextOrderId(existing: PickupOrder[], isoDate: string): string {
+  const mmdd = isoDate.slice(5, 7) + isoDate.slice(8, 10);
   const prefix = `YL-${mmdd}-`;
   const seq = existing.filter((order) => order.id.startsWith(prefix)).length + 1;
   return `${prefix}${String(seq).padStart(3, "0")}`;
@@ -50,7 +50,7 @@ export function placeOrder(
   if (!match) return { ok: false, error: "這個取餐時段已經過了，請另選" };
 
   const order: PickupOrder = {
-    id: nextOrderId(existing, now),
+    id: nextOrderId(existing, draft.isoDate),
     createdAt: now.toISOString(),
     isoDate: draft.isoDate,
     customerName: draft.customerName.trim(),
@@ -64,9 +64,9 @@ export function placeOrder(
   return { ok: true, order };
 }
 
-export function todaysOrders(orders: PickupOrder[], now: Date): PickupOrder[] {
+export function kitchenOrders(orders: PickupOrder[], now: Date): PickupOrder[] {
   const { isoDate } = taipeiClock(now);
-  return orders.filter((order) => order.isoDate === isoDate);
+  return orders.filter((order) => order.isoDate >= isoDate);
 }
 
 export const statusLabels: Record<PickupOrder["status"], string> = {
