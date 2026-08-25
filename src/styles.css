@@ -391,6 +391,121 @@ a.btn.ghost {
   padding: 8px 0;
 }
 
+.tutor-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.6);
+  color: #4a5749;
+}
+
+.badge-demo {
+  background: rgba(180, 138, 69, 0.14);
+  color: var(--gold);
+  border-color: rgba(180, 138, 69, 0.35);
+}
+
+.badge-live {
+  background: rgba(59, 106, 114, 0.14);
+  color: var(--ocean);
+  border-color: rgba(59, 106, 114, 0.35);
+}
+
+.badge-pro {
+  background: var(--forest);
+  color: var(--foam);
+  border-color: transparent;
+}
+
+.chips button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.bubble.tutor {
+  background: white;
+  border: 1px solid var(--line);
+}
+
+.tutor-han {
+  margin: 0;
+  font-family: "Noto Serif TC", serif;
+  font-size: 20px;
+  line-height: 1.5;
+}
+
+.tutor-pinyin {
+  margin: 4px 0 0;
+  color: var(--ocean);
+  font-size: 14px;
+}
+
+.tutor-en {
+  margin: 2px 0 0;
+  color: #667266;
+  font-size: 14px;
+}
+
+.corrections {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(196, 91, 58, 0.08);
+  border: 1px solid rgba(196, 91, 58, 0.2);
+  font-size: 14px;
+}
+
+.corrections b {
+  display: block;
+  color: var(--clay);
+  margin-bottom: 4px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.corrections p {
+  margin: 4px 0 0;
+}
+
+.corrections s {
+  color: #9a5a48;
+}
+
+.paywall {
+  border-color: rgba(180, 138, 69, 0.4);
+  background: linear-gradient(180deg, rgba(180, 138, 69, 0.08), var(--foam));
+}
+
+.tutor-error {
+  margin-top: 10px;
+  color: var(--clay);
+  font-size: 14px;
+}
+
+.tutor-settings summary {
+  cursor: pointer;
+  font-family: "Noto Serif TC", serif;
+  font-weight: 700;
+}
+
+.tutor-settings label {
+  display: grid;
+  gap: 4px;
+  font-size: 14px;
+  color: #4a5749;
+}
+
 .topbar {
   display: none;
 }
