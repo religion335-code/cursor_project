@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>空間風量計算（CMF / CFM）</title>
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div>
+          <p class="eyebrow">Airflow · CMF / CFM / CMH</p>
+          <h1>這個空間需要多少風量？</h1>
+          <p class="lede">
+            台灣設備規格常把 <strong>CFM</strong>（立方英尺／分鐘）寫成
+            <strong>CMF</strong>。輸入坪數或長寬高，即可得到換氣所需風量，並預留
+            20% 風管與濾網餘裕作為選型建議。
+          </p>
+        </div>
+        <p class="note">
+          沒有平面圖時，先用坪數＋層高估算。選型請再對照實際靜壓與法規。
+        </p>
+      </header>
+
+      <div class="layout">
+        <form id="cfm-form" class="card" autocomplete="off">
+          <h2>空間條件</h2>
+          <div class="modes" role="radiogroup" aria-label="尺寸輸入方式">
+            <label>
+              <input type="radio" name="mode" value="ping" checked />
+              坪數＋層高
+            </label>
+            <label>
+              <input type="radio" name="mode" value="box" />
+              長 × 寬 × 高
+            </label>
+          </div>
+
+          <div class="grid">
+            <div id="ping-fields" class="field">
+              <span>坪數</span>
+              <input
+                id="ping"
+                name="ping"
+                type="number"
+                inputmode="decimal"
+                min="0.1"
+                step="0.1"
+                value="8"
+              />
+            </div>
+            <div id="box-fields" class="field-pair" hidden>
+              <div class="field">
+                <span>長度（m）</span>
+                <input
+                  id="lengthM"
+                  name="lengthM"
+                  type="number"
+                  inputmode="decimal"
+                  min="0.1"
+                  step="0.1"
+                  value="5.2"
+                />
+              </div>
+              <div class="field">
+                <span>寬度（m）</span>
+                <input
+                  id="widthM"
+                  name="widthM"
+                  type="number"
+                  inputmode="decimal"
+                  min="0.1"
+                  step="0.1"
+                  value="5.1"
+                />
+              </div>
+            </div>
+            <div class="field">
+              <span>層高（m）</span>
+              <input
+                id="heightM"
+                name="heightM"
+                type="number"
+                inputmode="decimal"
+                min="1"
+                step="0.1"
+                value="2.7"
+              />
+            </div>
+            <div class="field">
+              <span>同時使用人數</span>
+              <input
+                id="people"
+                name="people"
+                type="number"
+                min="0"
+                step="1"
+                value="4"
+              />
+            </div>
+            <div class="field wide">
+              <span>空間用途</span>
+              <select id="roomTypeId" name="roomTypeId"></select>
+            </div>
+            <div class="field">
+              <span>每小時換氣次數 ACH</span>
+              <input
+                id="ach"
+                name="ach"
+                type="number"
+                min="0.35"
+                step="0.1"
+                value="5"
+              />
+              <p id="ach-hint" class="hint"></p>
+            </div>
+            <div class="field">
+              <span>選型餘裕（%）</span>
+              <input
+                id="margin"
+                name="margin"
+                type="number"
+                min="0"
+                max="50"
+                step="5"
+                value="20"
+              />
+            </div>
+          </div>
+        </form>
+
+        <section class="card" aria-live="polite">
+          <h2>計算結果</h2>
+          <p id="error" class="error" hidden></p>
+          <div id="results">
+            <div class="hero-metric">
+              <div class="label">建議選型風量（含餘裕）</div>
+              <div class="value">
+                <span id="out-design-cfm">—</span>
+                <span class="unit">CMF / CFM</span>
+              </div>
+              <div class="label">最低需求 <span id="out-required-cfm">—</span> CFM</div>
+            </div>
+            <div class="metrics">
+              <div class="metric">
+                <div class="k">CMH（m³/h）</div>
+                <div class="v">
+                  <span id="out-design-cmh">—</span>
+                </div>
+                <div class="k">需求 <span id="out-required-cmh">—</span></div>
+              </div>
+              <div class="metric">
+                <div class="k">CMM（m³/min）</div>
+                <div class="v" id="out-design-cmm">—</div>
+              </div>
+              <div class="metric">
+                <div class="k">面積</div>
+                <div class="v">
+                  <span id="out-ping">—</span> 坪
+                </div>
+                <div class="k"><span id="out-area">—</span> m²</div>
+              </div>
+              <div class="metric">
+                <div class="k">室積</div>
+                <div class="v"><span id="out-volume">—</span> m³</div>
+                <div class="k">ACH <span id="out-ach">—</span></div>
+              </div>
+            </div>
+            <div class="breakdown">
+              <strong id="out-driver">—</strong>
+              <dl>
+                <dt>空間類型</dt>
+                <dd id="out-room">—</dd>
+                <dt>換氣次數風量</dt>
+                <dd id="out-by-ach">—</dd>
+                <dt>人數新鮮空氣</dt>
+                <dd id="out-by-people">—</dd>
+              </dl>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <section class="card table-wrap">
+        <h2>常見空間速查（層高 2.7 m，衛浴 2.4 m；含 20% 餘裕）</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>空間</th>
+              <th>ACH</th>
+              <th>需求 CFM</th>
+              <th>選型 CFM</th>
+              <th>需求 CMH</th>
+            </tr>
+          </thead>
+          <tbody id="quick-ref-body"></tbody>
+        </table>
+        <div class="formulas">
+          <p>
+            體積 <code>V = 坪數 × 3.305785 × 層高</code>　風量
+            <code>CMH = V × ACH</code>　<code>CFM = CMH × 0.5886</code>
+          </p>
+          <p>
+            同時取「換氣次數」與「每人 25 CMH 新鮮空氣」較大值，再加選型餘裕。這是通風估算，不是空調噸數。
+          </p>
+        </div>
+      </section>
+
+      <footer>
+        1 坪 = 3.305785 m²。浴室間歇排氣常見下限約 50 CFM。實際風機還要看機外靜壓、風管長度與濾網阻力。
+      </footer>
+    </div>
+    <script src="js/cfm.js"></script>
+    <script src="js/app.js"></script>
+  </body>
+</html>
