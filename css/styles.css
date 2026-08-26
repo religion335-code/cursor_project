@@ -151,6 +151,10 @@ h2 {
   gap: 12px 14px;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 label span,
 .field > span {
   color: var(--muted);
