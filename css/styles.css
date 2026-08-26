@@ -153,6 +153,13 @@ h2 {
   grid-template-columns: 1fr 1fr 1fr;
 }
 
+.ach-fields {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 14px;
+}
+
 [hidden] {
   display: none !important;
 }
@@ -312,7 +319,8 @@ footer {
   .grid,
   .metrics,
   .field-pair,
-  .field-pair.triple {
+  .field-pair.triple,
+  .ach-fields {
     grid-template-columns: 1fr;
   }
 

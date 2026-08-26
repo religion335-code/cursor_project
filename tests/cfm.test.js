@@ -151,11 +151,41 @@ test("mm unit converts to metres", () => {
 });
 
 test("quick reference includes the 700 mm grow box and living 8 ping", () => {
-  const box = calc.QUICK_REFERENCE.find((item) => item.name === "700×500×400 mm 植物箱");
+  const box = calc.QUICK_REFERENCE.find((item) => item.name === "700×400×500 mm 植物箱");
   const living = calc.QUICK_REFERENCE.find((item) => item.name === "客廳 8 坪");
   assert.ok(box);
   assert.equal(box.ach, 30);
   assert.ok(box.designCfm > box.requiredCfm);
   assert.ok(living);
   assert.equal(living.ach, 5);
+});
+
+test("50 mm duct at 15 m/s is 62.4 CMF", () => {
+  const result = calc.dustCollectorFlow({
+    diameterMm: 50,
+    velocityMs: 15,
+    mode: "mm",
+    lengthM: 700,
+    widthM: 400,
+    heightM: 500,
+  });
+
+  const areaM2 = (Math.PI * 0.05 * 0.05) / 4;
+  const cmh = 15 * areaM2 * 3600;
+  assert.equal(result.ok, true);
+  assert.equal(result.areaCm2, 19.63);
+  assert.equal(result.requiredCmh, calc.round(cmh, 1));
+  assert.equal(result.requiredCfm, calc.round(cmh * calc.CMH_TO_CFM, 1));
+  assert.equal(result.volumeM3, 0.14);
+  assert.equal(result.volumeL, 140);
+  assert.ok(result.enclosureAch > 700);
+  assert.equal(result.exchangeSeconds, calc.round(0.14 / (15 * areaM2), 2));
+});
+
+test("dust collector rejects non-positive duct inputs", () => {
+  const result = calc.dustCollectorFlow({
+    diameterMm: 0,
+    velocityMs: 15,
+  });
+  assert.equal(result.ok, false);
 });

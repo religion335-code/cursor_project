@@ -73,6 +73,76 @@
   }
 
   /**
+   * Dust-collector airflow from duct diameter and suction/transport velocity.
+   * Q = A × v, A = π d² / 4
+   */
+  function dustCollectorFlow(input) {
+    var diameterMm = Number(input.diameterMm);
+    var velocityMs = Number(input.velocityMs);
+    var margin = input.margin == null ? 0 : Number(input.margin);
+
+    if (
+      !isFinite(diameterMm) ||
+      diameterMm <= 0 ||
+      !isFinite(velocityMs) ||
+      velocityMs <= 0
+    ) {
+      return { ok: false, error: "請輸入大於 0 的風管直徑與吸引風速。" };
+    }
+    if (!isFinite(margin) || margin < 0) margin = 0;
+
+    var diameterM = diameterMm / 1000;
+    var areaM2 = (Math.PI * diameterM * diameterM) / 4;
+    var qM3s = velocityMs * areaM2;
+    var requiredCmh = qM3s * 3600;
+    var designCmh = requiredCmh * (1 + margin);
+
+    var result = {
+      ok: true,
+      diameterMm: round(diameterMm, 1),
+      velocityMs: round(velocityMs, 2),
+      areaM2: round(areaM2, 6),
+      areaCm2: round(areaM2 * 10000, 2),
+      qM3s: round(qM3s, 5),
+      margin: margin,
+      requiredCmh: roundAirflow(requiredCmh),
+      requiredCmm: round(requiredCmh / 60, 3),
+      requiredCfm: roundAirflow(requiredCmh * CMH_TO_CFM),
+      designCmh: roundAirflow(designCmh),
+      designCmm: round(designCmh / 60, 3),
+      designCfm: roundAirflow(designCmh * CMH_TO_CFM),
+    };
+
+    var mode = input.mode || "mm";
+    var unit = mode === "mm" ? "mm" : input.unit || "m";
+    if (mode === "ping") unit = "m";
+    var lengthRaw = Number(input.lengthM);
+    var widthRaw = Number(input.widthM);
+    var heightRaw = Number(input.heightM);
+    if (
+      isFinite(lengthRaw) &&
+      isFinite(widthRaw) &&
+      isFinite(heightRaw) &&
+      lengthRaw > 0 &&
+      widthRaw > 0 &&
+      heightRaw > 0 &&
+      mode !== "ping"
+    ) {
+      var volumeM3 = volumeFromDimensions(
+        toMeters(lengthRaw, unit),
+        toMeters(widthRaw, unit),
+        toMeters(heightRaw, unit)
+      );
+      result.volumeM3 = roundVolume(volumeM3);
+      result.volumeL = round(volumeM3 * 1000, 1);
+      result.enclosureAch = round(requiredCmh / volumeM3, 1);
+      result.exchangeSeconds = round(volumeM3 / qM3s, 2);
+    }
+
+    return result;
+  }
+
+  /**
    * Required airflow for a space.
    *
    * Ventilation is the larger of:
@@ -162,12 +232,12 @@
 
   var QUICK_REFERENCE = [
     {
-      name: "700×500×400 mm 植物箱",
+      name: "700×400×500 mm 植物箱",
       mode: "mm",
       unit: "mm",
       lengthM: 700,
-      widthM: 500,
-      heightM: 400,
+      widthM: 400,
+      heightM: 500,
       roomTypeId: "growbox",
       people: 0,
     },
@@ -207,6 +277,7 @@
     volumeFromDimensions: volumeFromDimensions,
     volumeFromPing: volumeFromPing,
     calculate: calculate,
+    dustCollectorFlow: dustCollectorFlow,
     round: round,
   };
 });

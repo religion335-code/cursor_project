@@ -13,19 +13,30 @@
           <p class="eyebrow">Airflow · CMF / CFM / CMH</p>
           <h1>這個空間需要多少風量？</h1>
           <p class="lede">
-            台灣設備規格常把 <strong>CFM</strong>（立方英尺／分鐘）寫成
-            <strong>CMF</strong>。這次空間是 <strong>700 × 500 × 400 mm</strong>
-            （0.14 m³／140 L）。植物箱預設每 2 分鐘換氣一次，並加 20% 選型餘裕。
+            台灣設備規格常把 <strong>CFM</strong> 寫成 <strong>CMF</strong>。
+            空間 <strong>700 × 400 × 500 mm</strong>，抽風管
+            <strong>Ø50 mm</strong>，吸引風速 <strong>15 m/s</strong>。
+            集塵機總風量由管截面積 × 風速算出。
           </p>
         </div>
         <p class="note">
-          700×500×400 mm 不是房間，人數新鮮空氣不適用。選風扇時以靜壓與濾網阻力為準。
+          Ø50 mm、15 m/s 時管內風量就是集塵機要送的總風量。濾網積塵後風量會掉，選機請留靜壓餘裕。
         </p>
       </header>
 
       <div class="layout">
         <form id="cfm-form" class="card" autocomplete="off">
-          <h2>空間條件</h2>
+          <h2>計算條件</h2>
+          <div class="modes" role="radiogroup" aria-label="計算方式">
+            <label>
+              <input type="radio" name="method" value="duct" checked />
+              集塵機（管徑 × 風速）
+            </label>
+            <label>
+              <input type="radio" name="method" value="ach" />
+              空間換氣（ACH）
+            </label>
+          </div>
           <div class="modes" role="radiogroup" aria-label="尺寸輸入方式">
             <label>
               <input type="radio" name="mode" value="mm" checked />
@@ -90,7 +101,7 @@
                   inputmode="decimal"
                   min="1"
                   step="1"
-                  value="500"
+                  value="400"
                 />
               </div>
               <div class="field">
@@ -102,36 +113,64 @@
                   inputmode="decimal"
                   min="1"
                   step="1"
-                  value="400"
+                  value="500"
                 />
               </div>
             </div>
-            <div class="field">
-              <span>同時使用人數</span>
-              <input
-                id="people"
-                name="people"
-                type="number"
-                min="0"
-                step="1"
-                value="0"
-              />
+            <div id="duct-fields" class="field-pair">
+              <div class="field">
+                <span>抽風管直徑（mm）</span>
+                <input
+                  id="diameterMm"
+                  name="diameterMm"
+                  type="number"
+                  inputmode="decimal"
+                  min="1"
+                  step="1"
+                  value="50"
+                />
+              </div>
+              <div class="field">
+                <span>吸引風速（m/s）</span>
+                <input
+                  id="velocityMs"
+                  name="velocityMs"
+                  type="number"
+                  inputmode="decimal"
+                  min="0.1"
+                  step="0.1"
+                  value="15"
+                />
+              </div>
             </div>
-            <div class="field wide">
-              <span>空間用途</span>
-              <select id="roomTypeId" name="roomTypeId"></select>
-            </div>
-            <div class="field">
-              <span>每小時換氣次數 ACH</span>
-              <input
-                id="ach"
-                name="ach"
-                type="number"
-                min="0.35"
-                step="0.1"
-                value="5"
-              />
-              <p id="ach-hint" class="hint"></p>
+            <div id="ach-fields" class="ach-fields" hidden>
+              <div class="field">
+                <span>同時使用人數</span>
+                <input
+                  id="people"
+                  name="people"
+                  type="number"
+                  min="0"
+                  step="1"
+                  value="0"
+                />
+              </div>
+              <div class="field wide">
+                <span>空間用途</span>
+                <select id="roomTypeId" name="roomTypeId"></select>
+              </div>
+              <div class="field">
+                <span>每小時換氣次數 ACH</span>
+                <input
+                  id="ach"
+                  name="ach"
+                  type="number"
+                  min="0.35"
+                  step="0.1"
+                  value="5"
+                />
+                <p id="ach-hint" class="hint"></p>
+              </div>
             </div>
             <div class="field">
               <span>選型餘裕（%）</span>
@@ -142,7 +181,7 @@
                 min="0"
                 max="50"
                 step="5"
-                value="20"
+                value="0"
               />
             </div>
           </div>
@@ -153,12 +192,12 @@
           <p id="error" class="error" hidden></p>
           <div id="results">
             <div class="hero-metric">
-              <div class="label">建議選型風量（含餘裕）</div>
+              <div class="label" id="out-hero-label">集塵機總風量</div>
               <div class="value">
                 <span id="out-design-cfm">—</span>
                 <span class="unit">CMF / CFM</span>
               </div>
-              <div class="label">最低需求 <span id="out-required-cfm">—</span> CFM</div>
+              <div class="label" id="out-hero-sub">管內計算風量</div>
             </div>
             <div class="metrics">
               <div class="metric">
@@ -174,10 +213,7 @@
               </div>
               <div class="metric">
                 <div class="k">面積</div>
-                <div class="v">
-                  <span id="out-ping">—</span> 坪
-                </div>
-                <div class="k"><span id="out-area">—</span> m²</div>
+                <div class="v" id="out-area-line">—</div>
               </div>
               <div class="metric">
                 <div class="k">室積</div>
@@ -190,12 +226,18 @@
             <div class="breakdown">
               <strong id="out-driver">—</strong>
               <dl>
+                <dt>管截面積</dt>
+                <dd id="out-duct-area">—</dd>
                 <dt>空間類型</dt>
                 <dd id="out-room">—</dd>
                 <dt>換氣次數風量</dt>
                 <dd id="out-by-ach">—</dd>
                 <dt>人數新鮮空氣</dt>
                 <dd id="out-by-people">—</dd>
+                <dt>相當 ACH</dt>
+                <dd id="out-enclosure-ach">—</dd>
+                <dt>換氣週期</dt>
+                <dd id="out-exchange">—</dd>
               </dl>
             </div>
           </div>
@@ -218,12 +260,13 @@
         </table>
         <div class="formulas">
           <p>
-            體積 <code>V = 坪數 × 3.305785 × 層高</code>　風量
-            <code>CMH = V × ACH</code>　<code>CFM = CMH × 0.5886</code>
+            體積 <code>V = 長 × 寬 × 高</code>。集塵機
+            <code>Q = v × π d² / 4</code>，
+            <code>CFM = CMH × 0.5886</code>。
           </p>
           <p>
-            小型箱體（小於 1 m³）只按換氣次數計算，不套用每人 25 CMH。
-            700×500×400 mm 植物箱預設 ACH 30（約每 2 分鐘換氣一次）。
+            Ø50 mm、15 m/s → 截面積 19.63 cm² → <strong>62.4 CMF</strong>（106 CMH）。
+            箱體 0.14 m³ 約 4.8 秒換氣一次。空間換氣算法見「空間換氣（ACH）」。
           </p>
         </div>
       </section>
