@@ -101,6 +101,7 @@ h2 {
 
 .modes {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 18px;
 }
@@ -143,12 +144,13 @@ h2 {
 .field.wide,
 .field-pair {
   grid-column: 1 / -1;
-}
-
-.field-pair {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px 14px;
+}
+
+.field-pair.triple {
+  grid-template-columns: 1fr 1fr 1fr;
 }
 
 [hidden] {
@@ -308,7 +310,9 @@ footer {
   header,
   .layout,
   .grid,
-  .metrics {
+  .metrics,
+  .field-pair,
+  .field-pair.triple {
     grid-template-columns: 1fr;
   }
 

@@ -19,6 +19,8 @@
   var DEFAULT_MARGIN = 0.2;
 
   var ROOM_TYPES = [
+    { id: "growbox", name: "植物箱／種植箱", ach: 30, achMin: 20, achMax: 60 },
+    { id: "enclosure", name: "小型密閉箱／機櫃", ach: 15, achMin: 8, achMax: 30 },
     { id: "living", name: "客廳／起居室", ach: 5, achMin: 4, achMax: 6 },
     { id: "bedroom", name: "臥室", ach: 5, achMin: 4, achMax: 6 },
     { id: "kitchen", name: "廚房（住宅）", ach: 12, achMin: 8, achMax: 15 },
@@ -49,8 +51,21 @@
     return Number(ping) * PING_TO_M2;
   }
 
+  function toMeters(value, unit) {
+    var n = Number(value);
+    return unit === "mm" ? n / 1000 : n;
+  }
+
   function volumeFromDimensions(lengthM, widthM, heightM) {
     return Number(lengthM) * Number(widthM) * Number(heightM);
+  }
+
+  function roundAirflow(value) {
+    return round(value, Math.abs(value) < 10 ? 2 : 1);
+  }
+
+  function roundVolume(value) {
+    return round(value, value < 1 ? 3 : 2);
   }
 
   function volumeFromPing(ping, heightM) {
@@ -67,7 +82,10 @@
    * Design airflow adds a duct/filter margin (default 20%).
    */
   function calculate(input) {
-    var heightM = Number(input.heightM);
+    var mode = input.mode || "ping";
+    var unit = mode === "mm" ? "mm" : input.unit || "m";
+    if (mode === "ping") unit = "m";
+    var heightM = toMeters(input.heightM, unit);
     var people = Number(input.people);
     var margin = input.margin == null ? DEFAULT_MARGIN : Number(input.margin);
     var cmhPerPerson =
@@ -80,11 +98,12 @@
 
     var areaM2;
     var volumeM3;
-    var mode = input.mode || "ping";
 
-    if (mode === "box") {
-      areaM2 = Number(input.lengthM) * Number(input.widthM);
-      volumeM3 = volumeFromDimensions(input.lengthM, input.widthM, heightM);
+    if (mode === "box" || mode === "mm") {
+      var lengthM = toMeters(input.lengthM, unit);
+      var widthM = toMeters(input.widthM, unit);
+      areaM2 = lengthM * widthM;
+      volumeM3 = volumeFromDimensions(lengthM, widthM, heightM);
     } else {
       areaM2 = areaM2FromPing(input.ping);
       volumeM3 = volumeFromPing(input.ping, heightM);
@@ -107,10 +126,11 @@
       cmhPerPerson = DEFAULT_CMH_PER_PERSON;
     }
 
+    var occupancyApplies = volumeM3 >= 1;
     var byAchCmh = volumeM3 * ach;
-    var byPeopleCmh = people * cmhPerPerson;
+    var byPeopleCmh = occupancyApplies ? people * cmhPerPerson : 0;
     var requiredCmh = Math.max(byAchCmh, byPeopleCmh);
-    var driver = byPeopleCmh > byAchCmh ? "people" : "ach";
+    var driver = occupancyApplies && byPeopleCmh > byAchCmh ? "people" : "ach";
     var designCmh = requiredCmh * (1 + margin);
     var ping = areaM2 / PING_TO_M2;
 
@@ -122,23 +142,35 @@
       cmhPerPerson: cmhPerPerson,
       margin: margin,
       driver: driver,
-      ping: round(ping, 2),
-      areaM2: round(areaM2, 2),
-      heightM: round(heightM, 2),
-      volumeM3: round(volumeM3, 2),
-      volumeFt3: round(volumeM3 * M3_TO_FT3, 1),
-      byAchCmh: round(byAchCmh, 1),
-      byPeopleCmh: round(byPeopleCmh, 1),
-      requiredCmh: round(requiredCmh, 1),
-      requiredCmm: round(requiredCmh / 60, 2),
-      requiredCfm: round(requiredCmh * CMH_TO_CFM, 1),
-      designCmh: round(designCmh, 1),
-      designCmm: round(designCmh / 60, 2),
-      designCfm: round(designCmh * CMH_TO_CFM, 1),
+      occupancyApplies: occupancyApplies,
+      ping: round(ping, volumeM3 < 1 ? 3 : 2),
+      areaM2: round(areaM2, volumeM3 < 1 ? 3 : 2),
+      heightM: round(heightM, 3),
+      volumeM3: roundVolume(volumeM3),
+      volumeL: round(volumeM3 * 1000, 1),
+      volumeFt3: round(volumeM3 * M3_TO_FT3, volumeM3 < 1 ? 2 : 1),
+      byAchCmh: roundAirflow(byAchCmh),
+      byPeopleCmh: roundAirflow(byPeopleCmh),
+      requiredCmh: roundAirflow(requiredCmh),
+      requiredCmm: round(requiredCmh / 60, 3),
+      requiredCfm: roundAirflow(requiredCmh * CMH_TO_CFM),
+      designCmh: roundAirflow(designCmh),
+      designCmm: round(designCmh / 60, 3),
+      designCfm: roundAirflow(designCmh * CMH_TO_CFM),
     };
   }
 
   var QUICK_REFERENCE = [
+    {
+      name: "700×500×400 mm 植物箱",
+      mode: "mm",
+      unit: "mm",
+      lengthM: 700,
+      widthM: 500,
+      heightM: 400,
+      roomTypeId: "growbox",
+      people: 0,
+    },
     { name: "臥室 4 坪", ping: 4, heightM: 2.7, roomTypeId: "bedroom", people: 2 },
     { name: "臥室 6 坪", ping: 6, heightM: 2.7, roomTypeId: "bedroom", people: 2 },
     { name: "客廳 8 坪", ping: 8, heightM: 2.7, roomTypeId: "living", people: 4 },

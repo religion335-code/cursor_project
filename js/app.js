@@ -12,6 +12,7 @@
   var results = document.getElementById("results");
   var errorBox = document.getElementById("error");
   var tableBody = document.getElementById("quick-ref-body");
+  var lastMode = "mm";
 
   function fillRoomTypes() {
     roomTypeSelect.innerHTML = calc.ROOM_TYPES.map(function (room) {
@@ -27,7 +28,7 @@
         " 次/時）</option>"
       );
     }).join("");
-    roomTypeSelect.value = "living";
+    roomTypeSelect.value = "growbox";
   }
 
   function syncAchFromRoom(force) {
@@ -41,18 +42,67 @@
 
   function currentMode() {
     var checked = form.querySelector('input[name="mode"]:checked');
-    return checked ? checked.value : "ping";
+    return checked ? checked.value : "mm";
+  }
+
+  function setNumber(id, value, digits) {
+    var n = Number(value);
+    document.getElementById(id).value = String(
+      calc.round(n, digits == null ? 3 : digits)
+    );
+  }
+
+  function applyDimensionUnit(mode) {
+    var isMm = mode === "mm";
+    var unit = isMm ? "mm" : "m";
+    document.getElementById("length-label").textContent = "長度（" + unit + "）";
+    document.getElementById("width-label").textContent = "寬度（" + unit + "）";
+    document.getElementById("height-label").textContent = "高度（" + unit + "）";
+
+    ["lengthM", "widthM", "heightM"].forEach(function (id) {
+      var input = document.getElementById(id);
+      input.min = isMm ? "1" : "0.01";
+      input.step = isMm ? "1" : "0.01";
+    });
+  }
+
+  function convertBoxValues(fromMode, toMode) {
+    if (fromMode === toMode) return;
+    if (fromMode === "ping" || toMode === "ping") return;
+    if (fromMode === "mm" && toMode === "box") {
+      setNumber("lengthM", numberValue("lengthM") / 1000, 3);
+      setNumber("widthM", numberValue("widthM") / 1000, 3);
+      setNumber("heightM", numberValue("heightM") / 1000, 3);
+    } else if (fromMode === "box" && toMode === "mm") {
+      setNumber("lengthM", numberValue("lengthM") * 1000, 0);
+      setNumber("widthM", numberValue("widthM") * 1000, 0);
+      setNumber("heightM", numberValue("heightM") * 1000, 0);
+    }
   }
 
   function toggleMode() {
     var mode = currentMode();
     pingFields.hidden = mode !== "ping";
-    boxFields.hidden = mode !== "box";
+    boxFields.hidden = mode === "ping";
+    convertBoxValues(lastMode, mode);
+    applyDimensionUnit(mode);
+    if (mode === "ping" && (lastMode === "mm" || lastMode === "box")) {
+      roomTypeSelect.value = "living";
+      document.getElementById("people").value = "4";
+      syncAchFromRoom(true);
+    } else if (mode !== "ping" && lastMode === "ping") {
+      roomTypeSelect.value = "growbox";
+      document.getElementById("people").value = "0";
+      syncAchFromRoom(true);
+    }
+    lastMode = mode;
     render();
   }
 
   function numberValue(id) {
-    var raw = document.getElementById(id).value;
+    var el = document.getElementById(id);
+    if (!el) return NaN;
+    var raw = el.value;
     if (raw === "" || raw == null) return NaN;
     return Number(raw);
   }
@@ -62,12 +112,14 @@
   }
 
   function render() {
+    var mode = currentMode();
     var input = {
-      mode: currentMode(),
+      mode: mode,
+      unit: mode === "mm" ? "mm" : "m",
       ping: numberValue("ping"),
       lengthM: numberValue("lengthM"),
       widthM: numberValue("widthM"),
-      heightM: numberValue("heightM"),
+      heightM: mode === "ping" ? numberValue("pingHeight") : numberValue("heightM"),
       roomTypeId: roomTypeSelect.value,
       ach: numberValue("ach"),
       people: numberValue("people"),
@@ -93,11 +145,14 @@
     setText("out-ping", result.ping.toLocaleString("zh-TW"));
     setText("out-area", result.areaM2.toLocaleString("zh-TW"));
     setText("out-volume", result.volumeM3.toLocaleString("zh-TW"));
+    setText("out-volume-l", result.volumeL.toLocaleString("zh-TW"));
     setText("out-ach", String(result.ach));
     setText("out-by-ach", result.byAchCmh.toLocaleString("zh-TW") + " CMH");
     setText(
       "out-by-people",
-      result.byPeopleCmh.toLocaleString("zh-TW") + " CMH"
+      result.occupancyApplies
+        ? result.byPeopleCmh.toLocaleString("zh-TW") + " CMH"
+        : "箱體小於 1 m³，不計人數"
     );
     setText(
       "out-driver",
@@ -135,6 +190,7 @@
   fillRoomTypes();
   syncAchFromRoom(true);
   fillQuickReference();
+  applyDimensionUnit("mm");
   toggleMode();
 
   modeInputs.forEach(function (input) {

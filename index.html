@@ -14,12 +14,12 @@
           <h1>這個空間需要多少風量？</h1>
           <p class="lede">
             台灣設備規格常把 <strong>CFM</strong>（立方英尺／分鐘）寫成
-            <strong>CMF</strong>。輸入坪數或長寬高，即可得到換氣所需風量，並預留
-            20% 風管與濾網餘裕作為選型建議。
+            <strong>CMF</strong>。這次空間是 <strong>700 × 500 × 400 mm</strong>
+            （0.14 m³／140 L）。植物箱預設每 2 分鐘換氣一次，並加 20% 選型餘裕。
           </p>
         </div>
         <p class="note">
-          沒有平面圖時，先用坪數＋層高估算。選型請再對照實際靜壓與法規。
+          700×500×400 mm 不是房間，人數新鮮空氣不適用。選風扇時以靜壓與濾網阻力為準。
         </p>
       </header>
 
@@ -28,65 +28,83 @@
           <h2>空間條件</h2>
           <div class="modes" role="radiogroup" aria-label="尺寸輸入方式">
             <label>
-              <input type="radio" name="mode" value="ping" checked />
-              坪數＋層高
+              <input type="radio" name="mode" value="mm" checked />
+              長寬高（mm）
             </label>
             <label>
               <input type="radio" name="mode" value="box" />
-              長 × 寬 × 高
+              長寬高（m）
+            </label>
+            <label>
+              <input type="radio" name="mode" value="ping" />
+              坪數＋層高
             </label>
           </div>
 
           <div class="grid">
-            <div id="ping-fields" class="field">
-              <span>坪數</span>
-              <input
-                id="ping"
-                name="ping"
-                type="number"
-                inputmode="decimal"
-                min="0.1"
-                step="0.1"
-                value="8"
-              />
-            </div>
-            <div id="box-fields" class="field-pair" hidden>
+            <div id="ping-fields" class="field-pair" hidden>
               <div class="field">
-                <span>長度（m）</span>
+                <span>坪數</span>
+                <input
+                  id="ping"
+                  name="ping"
+                  type="number"
+                  inputmode="decimal"
+                  min="0.1"
+                  step="0.1"
+                  value="8"
+                />
+              </div>
+              <div class="field">
+                <span>層高（m）</span>
+                <input
+                  id="pingHeight"
+                  name="pingHeight"
+                  type="number"
+                  inputmode="decimal"
+                  min="1"
+                  step="0.1"
+                  value="2.7"
+                />
+              </div>
+            </div>
+            <div id="box-fields" class="field-pair triple">
+              <div class="field">
+                <span id="length-label">長度（mm）</span>
                 <input
                   id="lengthM"
                   name="lengthM"
                   type="number"
                   inputmode="decimal"
-                  min="0.1"
-                  step="0.1"
-                  value="5.2"
+                  min="1"
+                  step="1"
+                  value="700"
                 />
               </div>
               <div class="field">
-                <span>寬度（m）</span>
+                <span id="width-label">寬度（mm）</span>
                 <input
                   id="widthM"
                   name="widthM"
                   type="number"
                   inputmode="decimal"
-                  min="0.1"
-                  step="0.1"
-                  value="5.1"
+                  min="1"
+                  step="1"
+                  value="500"
                 />
               </div>
-            </div>
-            <div class="field">
-              <span>層高（m）</span>
-              <input
-                id="heightM"
-                name="heightM"
-                type="number"
-                inputmode="decimal"
-                min="1"
-                step="0.1"
-                value="2.7"
-              />
+              <div class="field">
+                <span id="height-label">高度（mm）</span>
+                <input
+                  id="heightM"
+                  name="heightM"
+                  type="number"
+                  inputmode="decimal"
+                  min="1"
+                  step="1"
+                  value="400"
+                />
+              </div>
             </div>
             <div class="field">
               <span>同時使用人數</span>
@@ -96,7 +114,7 @@
                 type="number"
                 min="0"
                 step="1"
-                value="4"
+                value="0"
               />
             </div>
             <div class="field wide">
@@ -163,8 +181,10 @@
               </div>
               <div class="metric">
                 <div class="k">室積</div>
-                <div class="v"><span id="out-volume">—</span> m³</div>
-                <div class="k">ACH <span id="out-ach">—</span></div>
+                <div class="v">
+                  <span id="out-volume">—</span> m³
+                </div>
+                <div class="k"><span id="out-volume-l">—</span> L · ACH <span id="out-ach">—</span></div>
               </div>
             </div>
             <div class="breakdown">
@@ -183,7 +203,7 @@
       </div>
 
       <section class="card table-wrap">
-        <h2>常見空間速查（層高 2.7 m，衛浴 2.4 m；含 20% 餘裕）</h2>
+        <h2>常見空間速查（含 20% 餘裕；房間層高 2.7 m，衛浴 2.4 m）</h2>
         <table>
           <thead>
             <tr>
@@ -202,7 +222,8 @@
             <code>CMH = V × ACH</code>　<code>CFM = CMH × 0.5886</code>
           </p>
           <p>
-            同時取「換氣次數」與「每人 25 CMH 新鮮空氣」較大值，再加選型餘裕。這是通風估算，不是空調噸數。
+            小型箱體（小於 1 m³）只按換氣次數計算，不套用每人 25 CMH。
+            700×500×400 mm 植物箱預設 ACH 30（約每 2 分鐘換氣一次）。
           </p>
         </div>
       </section>

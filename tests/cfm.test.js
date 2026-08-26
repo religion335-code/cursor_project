@@ -34,7 +34,7 @@ test("8 ping living room uses ACH airflow over occupancy", () => {
   assert.equal(result.requiredCmh, calc.round(requiredCmh, 1));
   assert.equal(result.requiredCfm, calc.round(requiredCmh * calc.CMH_TO_CFM, 1));
   assert.equal(result.designCfm, calc.round(requiredCmh * 1.2 * calc.CMH_TO_CFM, 1));
-  assert.equal(result.requiredCmm, calc.round(requiredCmh / 60, 2));
+  assert.equal(result.requiredCmm, calc.round(requiredCmh / 60, 3));
 });
 
 test("high occupancy switches driver to people", () => {
@@ -90,9 +90,72 @@ test("CMH to CFM factor is 35.314666721 / 60", () => {
   assert.ok(Math.abs(cfm - 58.8578) < 0.001);
 });
 
-test("quick reference includes living 8 ping", () => {
-  const row = calc.QUICK_REFERENCE.find((item) => item.name === "客廳 8 坪");
-  assert.ok(row);
-  assert.equal(row.ach, 5);
-  assert.ok(row.designCfm > row.requiredCfm);
+test("700×500×400 mm grow box needs about 3 CMF with margin", () => {
+  const result = calc.calculate({
+    mode: "mm",
+    lengthM: 700,
+    widthM: 500,
+    heightM: 400,
+    roomTypeId: "growbox",
+    people: 0,
+    margin: 0.2,
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.occupancyApplies, false);
+  assert.equal(result.volumeM3, 0.14);
+  assert.equal(result.volumeL, 140);
+  assert.equal(result.ach, 30);
+  const requiredCmh = 0.14 * 30;
+  assert.equal(result.requiredCmh, calc.round(requiredCmh, 2));
+  assert.equal(result.requiredCfm, calc.round(requiredCmh * calc.CMH_TO_CFM, 2));
+  assert.equal(result.designCfm, calc.round(requiredCmh * 1.2 * calc.CMH_TO_CFM, 2));
+});
+
+test("sub-1 m³ enclosure ignores occupancy", () => {
+  const result = calc.calculate({
+    mode: "mm",
+    lengthM: 700,
+    widthM: 500,
+    heightM: 400,
+    roomTypeId: "growbox",
+    people: 4,
+    margin: 0.2,
+  });
+  assert.equal(result.occupancyApplies, false);
+  assert.equal(result.driver, "ach");
+  assert.equal(result.byPeopleCmh, 0);
+});
+
+test("mm unit converts to metres", () => {
+  const mm = calc.calculate({
+    mode: "mm",
+    lengthM: 700,
+    widthM: 500,
+    heightM: 400,
+    roomTypeId: "enclosure",
+    people: 0,
+  });
+  const metres = calc.calculate({
+    mode: "box",
+    unit: "m",
+    lengthM: 0.7,
+    widthM: 0.5,
+    heightM: 0.4,
+    roomTypeId: "enclosure",
+    people: 0,
+  });
+  assert.equal(mm.ok, true);
+  assert.equal(mm.volumeM3, metres.volumeM3);
+  assert.equal(mm.designCfm, metres.designCfm);
+});
+
+test("quick reference includes the 700 mm grow box and living 8 ping", () => {
+  const box = calc.QUICK_REFERENCE.find((item) => item.name === "700×500×400 mm 植物箱");
+  const living = calc.QUICK_REFERENCE.find((item) => item.name === "客廳 8 坪");
+  assert.ok(box);
+  assert.equal(box.ach, 30);
+  assert.ok(box.designCfm > box.requiredCfm);
+  assert.ok(living);
+  assert.equal(living.ach, 5);
 });
