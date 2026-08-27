@@ -160,6 +160,26 @@ test("quick reference includes the 700 mm grow box and living 8 ping", () => {
   assert.equal(living.ach, 5);
 });
 
+test("35 mm duct at 15 m/s is 30.6 CMF", () => {
+  const result = calc.dustCollectorFlow({
+    diameterMm: 35,
+    velocityMs: 15,
+    mode: "mm",
+    lengthM: 700,
+    widthM: 400,
+    heightM: 500,
+  });
+
+  const areaM2 = (Math.PI * 0.035 * 0.035) / 4;
+  const cmh = 15 * areaM2 * 3600;
+  assert.equal(result.ok, true);
+  assert.equal(result.areaCm2, 9.62);
+  assert.equal(result.requiredCmh, calc.round(cmh, 1));
+  assert.equal(result.requiredCfm, calc.round(cmh * calc.CMH_TO_CFM, 1));
+  assert.equal(result.volumeM3, 0.14);
+  assert.equal(result.exchangeSeconds, calc.round(0.14 / (15 * areaM2), 2));
+});
+
 test("50 mm duct at 15 m/s is 62.4 CMF", () => {
   const result = calc.dustCollectorFlow({
     diameterMm: 50,
