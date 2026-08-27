@@ -165,15 +165,37 @@
                 />
               </div>
               <div class="field">
-                <span>管內輸送風速（m/s）</span>
+                <span>實際集塵風量（CMF）</span>
                 <input
-                  id="transportMs"
-                  name="transportMs"
+                  id="actualCfm"
+                  name="actualCfm"
                   type="number"
                   inputmode="decimal"
+                  min="1"
+                  step="10"
+                  value="400"
+                />
+              </div>
+              <div class="field">
+                <span>風管小頭（mm）</span>
+                <input
+                  id="ductMinMm"
+                  name="ductMinMm"
+                  type="number"
                   min="10"
                   step="1"
-                  value="18"
+                  value="120"
+                />
+              </div>
+              <div class="field">
+                <span>風管大頭（mm）</span>
+                <input
+                  id="ductMaxMm"
+                  name="ductMaxMm"
+                  type="number"
+                  min="10"
+                  step="1"
+                  value="150"
                 />
               </div>
             </div>
@@ -303,7 +325,8 @@
             投料站 <code>Q = 開口面積 × 面風速</code>。
             700 × 500 mm 開口、HSE 1.0 m/s → <strong>742 CMF</strong>；
             加 20% 選型 <strong>890 CMF</strong>。
-            Ø35 mm 管最多約 30–41 CMF，必須改約 Ø160 mm。
+            若實際只有 400 CMF：開口面風速約 0.54 m/s（需求 1.0 的 54%），
+            Ø120 mm 管內約 16.7 m/s 尚可，放大到 Ø150 mm 掉到約 10.7 m/s，大管段容易積塵。
           </p>
         </div>
       </section>

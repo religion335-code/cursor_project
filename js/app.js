@@ -191,6 +191,9 @@
       facePresetId: facePresetSelect.value,
       faceVelocityMs: numberValue("faceVelocityMs"),
       transportMs: numberValue("transportMs"),
+      actualCfm: numberValue("actualCfm"),
+      ductMinMm: numberValue("ductMinMm"),
+      ductMaxMm: numberValue("ductMaxMm"),
     };
 
     var result;
@@ -215,10 +218,20 @@
     setText("out-design-cmm", result.designCmm.toLocaleString("zh-TW"));
 
     if (method === "booth") {
-      if (ductWarning) {
-        ductWarning.hidden = !result.ductTooSmall;
-        ductWarning.textContent = result.ductTooSmall
-          ? "現有 Ø" +
+      var warn = [];
+      if (result.ductTooSmall && result.actualCfm) {
+        warn.push(
+          "實際 " +
+            result.actualCfm.toLocaleString("zh-TW") +
+            " CMF 只有需求的 " +
+            Math.round(result.captureRatio * 100) +
+            "%。" +
+            result.captureGrade +
+            "。"
+        );
+      } else if (result.ductTooSmall) {
+        warn.push(
+          "現有 Ø" +
             numberValue("diameterMm") +
             " mm 管在 " +
             result.transportMs +
@@ -229,42 +242,92 @@
             " CMF。輸送風管請改約 Ø" +
             result.requiredDuctMm +
             " mm。"
-          : "";
+        );
       }
-      setText("out-hero-label", "投料站建議選型風量");
-      setText(
-        "out-hero-sub",
-        "開口面風速 " +
-          result.faceVelocityMs +
-          " m/s · 最低需求 " +
-          result.requiredCfm.toLocaleString("zh-TW") +
-          " CMF"
-      );
+      if (result.ductMinVelocityMs != null) {
+        warn.push(
+          "Ø" +
+            result.ductMinMm +
+            " mm 管內 " +
+            result.ductMinVelocityMs +
+            " m/s" +
+            (result.ductMinSettling ? "（偏低，有積塵風險）" : "（輸送尚可）") +
+            "；Ø" +
+            result.ductMaxMm +
+            " mm 放大後 " +
+            result.ductMaxVelocityMs +
+            " m/s" +
+            (result.ductMaxSettling ? "，粉塵容易在大管段沉降。" : "。")
+        );
+      }
+      if (ductWarning) {
+        ductWarning.hidden = warn.length === 0;
+        ductWarning.textContent = warn.join(" ");
+      }
+      if (result.actualCfm) {
+        setText("out-hero-label", "400 CMF 實際吸塵效果".replace("400", String(result.actualCfm)));
+        setText(
+          "out-hero-sub",
+          "面風速 " +
+            result.actualFaceMs +
+            " m/s（" +
+            result.actualFaceFpm +
+            " fpm）· 需求 " +
+            result.requiredCfm.toLocaleString("zh-TW") +
+            " CMF"
+        );
+        setText("out-design-cfm", result.actualCfm.toLocaleString("zh-TW"));
+      } else {
+        setText("out-hero-label", "投料站建議選型風量");
+        setText(
+          "out-hero-sub",
+          "開口面風速 " +
+            result.faceVelocityMs +
+            " m/s · 最低需求 " +
+            result.requiredCfm.toLocaleString("zh-TW") +
+            " CMF"
+        );
+      }
       setText(
         "out-area-line",
         result.faceAreaM2.toLocaleString("zh-TW") + " m²（開口）"
       );
       setText("out-volume", "—");
       setText("out-volume-l", "—");
-      setText("out-ach", String(result.faceVelocityFpm) + " fpm");
+      setText("out-ach", result.actualFaceFpm ? String(result.actualFaceFpm) + " fpm 實際" : String(result.faceVelocityFpm) + " fpm");
       setText("out-duct-area", "建議風管 Ø" + result.requiredDuctMm + " mm");
       setText("out-room", result.preset.name);
       setText("out-by-ach", result.requiredCmh.toLocaleString("zh-TW") + " CMH");
       setText(
         "out-by-people",
-        "25 kg 袋投入產生粉塵雲，靠面風速把塵拉回箱內"
+        result.captureGrade || "25 kg 袋投入產生粉塵雲，靠面風速把塵拉回箱內"
       );
       setText(
         "out-enclosure-ach",
-        result.faceVelocityMs + " m/s 向內"
+        (result.actualFaceMs != null ? result.actualFaceMs : result.faceVelocityMs) + " m/s 向內"
       );
       setText(
         "out-exchange",
-        result.ductTooSmall
-          ? "現管 " + result.currentDuctCfm + " CMF，不足"
-          : "現管足夠"
+        result.ductMinVelocityMs != null
+          ? "Ø" +
+              result.ductMinMm +
+              " → Ø" +
+              result.ductMaxMm +
+              " mm：" +
+              result.ductMinVelocityMs +
+              " → " +
+              result.ductMaxVelocityMs +
+              " m/s"
+          : result.ductTooSmall
+            ? "現管 " + result.currentDuctCfm + " CMF，不足"
+            : "現管足夠"
       );
-      setText("out-driver", "由投料開口面積 × 面風速決定（不是管徑 × 15 m/s）");
+      setText(
+        "out-driver",
+        result.captureGrade
+          ? result.captureGrade
+          : "由投料開口面積 × 面風速決定（不是管徑 × 15 m/s）"
+      );
     } else if (method === "duct") {
       if (ductWarning) ductWarning.hidden = true;
       setText("out-hero-label", "集塵機總風量");

@@ -240,6 +240,29 @@ test("ACGIH toxic bag opening 1.27 m/s is about 942 CMF", () => {
   assert.equal(result.requiredCfm, calc.round(cmh * calc.CMH_TO_CFM, 1));
 });
 
+test("400 CMF on 700×500 mm face is only 0.54 m/s", () => {
+  const result = calc.tippingStationFlow({
+    mode: "mm",
+    lengthM: 700,
+    heightM: 500,
+    widthM: 400,
+    facePresetId: "hse",
+    actualCfm: 400,
+    ductMinMm: 120,
+    ductMaxMm: 150,
+    diameterMm: 120,
+    margin: 0.2,
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.actualFaceMs, 0.54);
+  assert.equal(result.captureRatio, 0.54);
+  assert.match(result.captureGrade, /不足/);
+  assert.equal(result.ductMinSettling, false);
+  assert.equal(result.ductMaxSettling, true);
+  assert.ok(result.ductMinVelocityMs > 16);
+  assert.ok(result.ductMaxVelocityMs < 12);
+});
+
 test("dust collector rejects non-positive duct inputs", () => {
   const result = calc.dustCollectorFlow({
     diameterMm: 0,

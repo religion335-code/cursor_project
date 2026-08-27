@@ -245,7 +245,47 @@
       }
     }
 
+    var actualCfm = Number(input.actualCfm);
+    if (isFinite(actualCfm) && actualCfm > 0) {
+      var actualCmh = actualCfm * CFM_TO_CMH;
+      var actualQ = actualCmh / 3600;
+      var actualFaceMs = actualQ / faceAreaM2;
+      result.actualCfm = roundAirflow(actualCfm);
+      result.actualCmh = roundAirflow(actualCmh);
+      result.actualFaceMs = round(actualFaceMs, 2);
+      result.actualFaceFpm = round(actualFaceMs * 196.85, 0);
+      result.captureRatio = round(actualFaceMs / faceVelocityMs, 2);
+      result.captureGrade = captureGrade(actualFaceMs);
+      result.neededOpeningM2 = round(actualQ / faceVelocityMs, 3);
+
+      var ductMinMm = Number(input.ductMinMm);
+      var ductMaxMm = Number(input.ductMaxMm);
+      if (isFinite(ductMinMm) && ductMinMm > 0) {
+        result.ductMinMm = round(ductMinMm, 0);
+        result.ductMinVelocityMs = round(actualQ / ductAreaM2(ductMinMm), 2);
+        result.ductMinSettling = result.ductMinVelocityMs < 15;
+      }
+      if (isFinite(ductMaxMm) && ductMaxMm > 0) {
+        result.ductMaxMm = round(ductMaxMm, 0);
+        result.ductMaxVelocityMs = round(actualQ / ductAreaM2(ductMaxMm), 2);
+        result.ductMaxSettling = result.ductMaxVelocityMs < 15;
+      }
+    }
+
     return result;
+  }
+
+  function ductAreaM2(diameterMm) {
+    var d = Number(diameterMm) / 1000;
+    return (Math.PI * d * d) / 4;
+  }
+
+  function captureGrade(faceMs) {
+    if (faceMs >= 1.27) return "足夠控制微粉";
+    if (faceMs >= 1.0) return "達到拆包下限，傾倒瞬間仍可能外逸";
+    if (faceMs >= 0.76) return "偏低，傾倒時粉塵容易外逸";
+    if (faceMs >= 0.5) return "不足，<200 μm 細粉會往操作者方向跑";
+    return "嚴重不足，幾乎擋不住投料粉塵雲";
   }
 
   /**
@@ -387,6 +427,8 @@
     calculate: calculate,
     dustCollectorFlow: dustCollectorFlow,
     tippingStationFlow: tippingStationFlow,
+    ductAreaM2: ductAreaM2,
+    captureGrade: captureGrade,
     round: round,
   };
 });
