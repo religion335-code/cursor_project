@@ -202,6 +202,44 @@ test("50 mm duct at 15 m/s is 62.4 CMF", () => {
   assert.equal(result.exchangeSeconds, calc.round(0.14 / (15 * areaM2), 2));
 });
 
+test("tipping station 700×500 mm at 1 m/s needs 742 CMF", () => {
+  const result = calc.tippingStationFlow({
+    mode: "mm",
+    lengthM: 700,
+    widthM: 400,
+    heightM: 500,
+    facePresetId: "hse",
+    faceVelocityMs: 1,
+    diameterMm: 35,
+    transportMs: 18,
+    margin: 0.2,
+  });
+
+  const cmh = 0.7 * 0.5 * 1 * 3600;
+  assert.equal(result.ok, true);
+  assert.equal(result.faceAreaM2, 0.35);
+  assert.equal(result.requiredCmh, calc.round(cmh, 1));
+  assert.equal(result.requiredCfm, calc.round(cmh * calc.CMH_TO_CFM, 1));
+  assert.equal(result.designCfm, calc.round(cmh * 1.2 * calc.CMH_TO_CFM, 1));
+  assert.equal(result.ductTooSmall, true);
+  assert.ok(result.requiredDuctMm >= 150);
+  assert.ok(result.currentDuctCfm < 50);
+});
+
+test("ACGIH toxic bag opening 1.27 m/s is about 942 CMF", () => {
+  const result = calc.tippingStationFlow({
+    mode: "mm",
+    lengthM: 700,
+    heightM: 500,
+    widthM: 400,
+    facePresetId: "toxic",
+    margin: 0,
+    diameterMm: 35,
+  });
+  const cmh = 0.7 * 0.5 * 1.27 * 3600;
+  assert.equal(result.requiredCfm, calc.round(cmh * calc.CMH_TO_CFM, 1));
+});
+
 test("dust collector rejects non-positive duct inputs", () => {
   const result = calc.dustCollectorFlow({
     diameterMm: 0,

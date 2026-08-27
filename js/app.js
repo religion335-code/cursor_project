@@ -8,15 +8,19 @@
   var pingFields = document.getElementById("ping-fields");
   var boxFields = document.getElementById("box-fields");
   var ductFields = document.getElementById("duct-fields");
+  var boothFields = document.getElementById("booth-fields");
   var achFields = document.getElementById("ach-fields");
+  var velocityField = document.getElementById("velocity-field");
   var roomTypeSelect = document.getElementById("roomTypeId");
   var achInput = document.getElementById("ach");
   var achHint = document.getElementById("ach-hint");
   var results = document.getElementById("results");
   var errorBox = document.getElementById("error");
+  var ductWarning = document.getElementById("duct-warning");
   var tableBody = document.getElementById("quick-ref-body");
+  var facePresetSelect = document.getElementById("facePresetId");
   var lastMode = "mm";
-  var lastMethod = "duct";
+  var lastMethod = "booth";
 
   function fillRoomTypes() {
     roomTypeSelect.innerHTML = calc.ROOM_TYPES.map(function (room) {
@@ -35,6 +39,30 @@
     roomTypeSelect.value = "growbox";
   }
 
+  function fillFacePresets() {
+    facePresetSelect.innerHTML = calc.FACE_VELOCITY_PRESETS.map(function (preset) {
+      return (
+        '<option value="' +
+        preset.id +
+        '">' +
+        preset.name +
+        " · " +
+        preset.velocityMs +
+        " m/s</option>"
+      );
+    }).join("");
+    facePresetSelect.value = "hse";
+  }
+
+  function syncFacePreset(force) {
+    var preset = calc.getFacePreset(facePresetSelect.value);
+    document.getElementById("face-hint").textContent =
+      preset.fpm + " fpm。葡萄糖 <200 μm 建議至少 HSE 1.0 m/s，微粉可拉到 1.27 m/s。";
+    if (force) {
+      document.getElementById("faceVelocityMs").value = String(preset.velocityMs);
+    }
+  }
+
   function syncAchFromRoom(force) {
     var room = calc.getRoomType(roomTypeSelect.value);
     achHint.textContent =
@@ -51,7 +79,7 @@
 
   function currentMethod() {
     var checked = form.querySelector('input[name="method"]:checked');
-    return checked ? checked.value : "duct";
+    return checked ? checked.value : "booth";
   }
 
   function setNumber(id, value, digits) {
@@ -64,9 +92,16 @@
   function applyDimensionUnit(mode) {
     var isMm = mode === "mm";
     var unit = isMm ? "mm" : "m";
-    document.getElementById("length-label").textContent = "長度（" + unit + "）";
-    document.getElementById("width-label").textContent = "寬度（" + unit + "）";
-    document.getElementById("height-label").textContent = "高度（" + unit + "）";
+    var booth = currentMethod() === "booth";
+    document.getElementById("length-label").textContent = booth
+      ? "開口寬（" + unit + "）"
+      : "長度（" + unit + "）";
+    document.getElementById("width-label").textContent = booth
+      ? "進深（" + unit + "）"
+      : "寬度（" + unit + "）";
+    document.getElementById("height-label").textContent = booth
+      ? "開口高（" + unit + "）"
+      : "高度（" + unit + "）";
 
     ["lengthM", "widthM", "heightM"].forEach(function (id) {
       var input = document.getElementById(id);
@@ -110,11 +145,14 @@
 
   function toggleMethod() {
     var method = currentMethod();
-    ductFields.hidden = method !== "duct";
+    ductFields.hidden = method === "ach";
+    velocityField.hidden = method !== "duct";
+    boothFields.hidden = method !== "booth";
     achFields.hidden = method !== "ach";
-    if (method === "duct" && lastMethod === "ach") {
+    applyDimensionUnit(currentMode());
+    if (method === "duct") {
       document.getElementById("margin").value = "0";
-    } else if (method === "ach" && lastMethod === "duct") {
+    } else if (method === "booth" || method === "ach") {
       document.getElementById("margin").value = "20";
     }
     lastMethod = method;
@@ -150,15 +188,21 @@
       margin: numberValue("margin") / 100,
       diameterMm: numberValue("diameterMm"),
       velocityMs: numberValue("velocityMs"),
+      facePresetId: facePresetSelect.value,
+      faceVelocityMs: numberValue("faceVelocityMs"),
+      transportMs: numberValue("transportMs"),
     };
 
-    var result =
-      method === "duct" ? calc.dustCollectorFlow(input) : calc.calculate(input);
+    var result;
+    if (method === "booth") result = calc.tippingStationFlow(input);
+    else if (method === "duct") result = calc.dustCollectorFlow(input);
+    else result = calc.calculate(input);
 
     if (!result.ok) {
       results.hidden = true;
       errorBox.hidden = false;
       errorBox.textContent = result.error;
+      if (ductWarning) ductWarning.hidden = true;
       return;
     }
 
@@ -170,7 +214,59 @@
     setText("out-required-cmh", result.requiredCmh.toLocaleString("zh-TW"));
     setText("out-design-cmm", result.designCmm.toLocaleString("zh-TW"));
 
-    if (method === "duct") {
+    if (method === "booth") {
+      if (ductWarning) {
+        ductWarning.hidden = !result.ductTooSmall;
+        ductWarning.textContent = result.ductTooSmall
+          ? "現有 Ø" +
+            numberValue("diameterMm") +
+            " mm 管在 " +
+            result.transportMs +
+            " m/s 只能送 " +
+            result.currentDuctCfm.toLocaleString("zh-TW") +
+            " CMF，低於需求 " +
+            result.requiredCfm.toLocaleString("zh-TW") +
+            " CMF。輸送風管請改約 Ø" +
+            result.requiredDuctMm +
+            " mm。"
+          : "";
+      }
+      setText("out-hero-label", "投料站建議選型風量");
+      setText(
+        "out-hero-sub",
+        "開口面風速 " +
+          result.faceVelocityMs +
+          " m/s · 最低需求 " +
+          result.requiredCfm.toLocaleString("zh-TW") +
+          " CMF"
+      );
+      setText(
+        "out-area-line",
+        result.faceAreaM2.toLocaleString("zh-TW") + " m²（開口）"
+      );
+      setText("out-volume", "—");
+      setText("out-volume-l", "—");
+      setText("out-ach", String(result.faceVelocityFpm) + " fpm");
+      setText("out-duct-area", "建議風管 Ø" + result.requiredDuctMm + " mm");
+      setText("out-room", result.preset.name);
+      setText("out-by-ach", result.requiredCmh.toLocaleString("zh-TW") + " CMH");
+      setText(
+        "out-by-people",
+        "25 kg 袋投入產生粉塵雲，靠面風速把塵拉回箱內"
+      );
+      setText(
+        "out-enclosure-ach",
+        result.faceVelocityMs + " m/s 向內"
+      );
+      setText(
+        "out-exchange",
+        result.ductTooSmall
+          ? "現管 " + result.currentDuctCfm + " CMF，不足"
+          : "現管足夠"
+      );
+      setText("out-driver", "由投料開口面積 × 面風速決定（不是管徑 × 15 m/s）");
+    } else if (method === "duct") {
+      if (ductWarning) ductWarning.hidden = true;
       setText("out-hero-label", "集塵機總風量");
       setText(
         "out-hero-sub",
@@ -203,6 +299,7 @@
       );
       setText("out-driver", "由風管斷面與吸引風速決定");
     } else {
+      if (ductWarning) ductWarning.hidden = true;
       setText("out-hero-label", "建議選型風量（含餘裕）");
       setText(
         "out-hero-sub",
@@ -263,6 +360,8 @@
   }
 
   fillRoomTypes();
+  fillFacePresets();
+  syncFacePreset(true);
   syncAchFromRoom(true);
   fillQuickReference();
   applyDimensionUnit("mm");
@@ -274,6 +373,10 @@
   });
   methodInputs.forEach(function (input) {
     input.addEventListener("change", toggleMethod);
+  });
+  facePresetSelect.addEventListener("change", function () {
+    syncFacePreset(true);
+    render();
   });
   roomTypeSelect.addEventListener("change", function () {
     syncAchFromRoom(true);

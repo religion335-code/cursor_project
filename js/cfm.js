@@ -142,6 +142,112 @@
     return result;
   }
 
+  var FACE_VELOCITY_PRESETS = [
+    {
+      id: "hopper",
+      name: "料斗／料倉（ACGIH VS-50-10）",
+      velocityMs: 0.76,
+      fpm: 150,
+    },
+    {
+      id: "hse",
+      name: "拆包站（HSE，<200 μm 建議下限）",
+      velocityMs: 1.0,
+      fpm: 197,
+    },
+    {
+      id: "toxic",
+      name: "有害／微粉拆包（ACGIH VS-15-20）",
+      velocityMs: 1.27,
+      fpm: 250,
+    },
+  ];
+
+  function getFacePreset(id) {
+    for (var i = 0; i < FACE_VELOCITY_PRESETS.length; i++) {
+      if (FACE_VELOCITY_PRESETS[i].id === id) return FACE_VELOCITY_PRESETS[i];
+    }
+    return FACE_VELOCITY_PRESETS[1];
+  }
+
+  /**
+   * Bag tipping / dump station: Q = opening area × inward face velocity.
+   * Opening uses length × height; width is booth depth (not in Q).
+   */
+  function tippingStationFlow(input) {
+    var mode = input.mode || "mm";
+    var unit = mode === "mm" ? "mm" : input.unit || "m";
+    var openingWidthM = toMeters(input.lengthM, unit);
+    var openingHeightM = toMeters(input.heightM, unit);
+    var depthM = toMeters(input.widthM, unit);
+    var preset = getFacePreset(input.facePresetId);
+    var faceVelocityMs =
+      input.faceVelocityMs == null || input.faceVelocityMs === ""
+        ? preset.velocityMs
+        : Number(input.faceVelocityMs);
+    var transportMs =
+      input.transportMs == null || input.transportMs === ""
+        ? 18
+        : Number(input.transportMs);
+    var margin = input.margin == null ? 0.2 : Number(input.margin);
+    var diameterMm = Number(input.diameterMm);
+
+    if (
+      !isFinite(openingWidthM) ||
+      !isFinite(openingHeightM) ||
+      openingWidthM <= 0 ||
+      openingHeightM <= 0 ||
+      !isFinite(faceVelocityMs) ||
+      faceVelocityMs <= 0
+    ) {
+      return { ok: false, error: "請輸入大於 0 的投料開口與面風速。" };
+    }
+    if (!isFinite(margin) || margin < 0) margin = 0.2;
+    if (!isFinite(transportMs) || transportMs <= 0) transportMs = 18;
+
+    var faceAreaM2 = openingWidthM * openingHeightM;
+    var qM3s = faceVelocityMs * faceAreaM2;
+    var requiredCmh = qM3s * 3600;
+    var designCmh = requiredCmh * (1 + margin);
+    var requiredDuctAreaM2 = designCmh / 3600 / transportMs;
+    var requiredDuctMm = Math.sqrt((4 * requiredDuctAreaM2) / Math.PI) * 1000;
+
+    var result = {
+      ok: true,
+      preset: preset,
+      faceVelocityMs: round(faceVelocityMs, 2),
+      faceVelocityFpm: round(faceVelocityMs * 196.85, 0),
+      faceAreaM2: round(faceAreaM2, 3),
+      openingWidthM: round(openingWidthM, 3),
+      openingHeightM: round(openingHeightM, 3),
+      depthM: isFinite(depthM) && depthM > 0 ? round(depthM, 3) : null,
+      transportMs: round(transportMs, 1),
+      margin: margin,
+      requiredCmh: roundAirflow(requiredCmh),
+      requiredCmm: round(requiredCmh / 60, 2),
+      requiredCfm: roundAirflow(requiredCmh * CMH_TO_CFM),
+      designCmh: roundAirflow(designCmh),
+      designCmm: round(designCmh / 60, 2),
+      designCfm: roundAirflow(designCmh * CMH_TO_CFM),
+      requiredDuctMm: round(requiredDuctMm, 0),
+      ductTooSmall: false,
+      currentDuctCfm: null,
+    };
+
+    if (isFinite(diameterMm) && diameterMm > 0) {
+      var currentDuct = dustCollectorFlow({
+        diameterMm: diameterMm,
+        velocityMs: transportMs,
+      });
+      if (currentDuct.ok) {
+        result.currentDuctCfm = currentDuct.requiredCfm;
+        result.ductTooSmall = currentDuct.requiredCfm < result.requiredCfm;
+      }
+    }
+
+    return result;
+  }
+
   /**
    * Required airflow for a space.
    *
@@ -276,8 +382,11 @@
     areaM2FromPing: areaM2FromPing,
     volumeFromDimensions: volumeFromDimensions,
     volumeFromPing: volumeFromPing,
+    FACE_VELOCITY_PRESETS: FACE_VELOCITY_PRESETS,
+    getFacePreset: getFacePreset,
     calculate: calculate,
     dustCollectorFlow: dustCollectorFlow,
+    tippingStationFlow: tippingStationFlow,
     round: round,
   };
 });

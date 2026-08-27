@@ -149,8 +149,8 @@ h2 {
   gap: 12px 14px;
 }
 
-.field-pair.triple {
-  grid-template-columns: 1fr 1fr 1fr;
+.field-pair .field.wide {
+  grid-column: 1 / -1;
 }
 
 .ach-fields {

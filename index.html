@@ -13,14 +13,13 @@
           <p class="eyebrow">Airflow · CMF / CFM / CMH</p>
           <h1>這個空間需要多少風量？</h1>
           <p class="lede">
-            台灣設備規格常把 <strong>CFM</strong> 寫成 <strong>CMF</strong>。
-            空間 <strong>700 × 400 × 500 mm</strong>，抽風管
-            <strong>Ø35 mm</strong>，吸引風速 <strong>15 m/s</strong>。
-            集塵機總風量由管截面積 × 風速算出。
+            這是 <strong>Dextrose 投料站</strong>（每袋 25 kg）。開口
+            <strong>700 × 500 mm</strong>、進深 400 mm。控制 &lt;200 μm 粉塵
+            要用開口<strong>面風速</strong>，不是 Ø35 mm 管內 15 m/s。
           </p>
         </div>
         <p class="note">
-          Ø35 mm、15 m/s 時管內風量就是集塵機要送的總風量。濾網積塵後風量會掉，選機請留靜壓餘裕。
+          Ø35 mm 管在 15 m/s 只有約 30.6 CMF，遠不夠擋住投料口粉塵。請用面風速計算，並加大風管。
         </p>
       </header>
 
@@ -29,8 +28,12 @@
           <h2>計算條件</h2>
           <div class="modes" role="radiogroup" aria-label="計算方式">
             <label>
-              <input type="radio" name="method" value="duct" checked />
-              集塵機（管徑 × 風速）
+              <input type="radio" name="method" value="booth" checked />
+              投料站（開口面風速）
+            </label>
+            <label>
+              <input type="radio" name="method" value="duct" />
+              風管容量（管徑 × 風速）
             </label>
             <label>
               <input type="radio" name="method" value="ach" />
@@ -130,8 +133,8 @@
                   value="35"
                 />
               </div>
-              <div class="field">
-                <span>吸引風速（m/s）</span>
+              <div class="field" id="velocity-field">
+                <span>管內風速（m/s）</span>
                 <input
                   id="velocityMs"
                   name="velocityMs"
@@ -140,6 +143,37 @@
                   min="0.1"
                   step="0.1"
                   value="15"
+                />
+              </div>
+            </div>
+            <div id="booth-fields" class="field-pair">
+              <div class="field wide">
+                <span>開口面風速（控制 &lt;200 μm）</span>
+                <select id="facePresetId" name="facePresetId"></select>
+                <p id="face-hint" class="hint"></p>
+              </div>
+              <div class="field">
+                <span>自訂面風速（m/s）</span>
+                <input
+                  id="faceVelocityMs"
+                  name="faceVelocityMs"
+                  type="number"
+                  inputmode="decimal"
+                  min="0.2"
+                  step="0.01"
+                  value="1"
+                />
+              </div>
+              <div class="field">
+                <span>管內輸送風速（m/s）</span>
+                <input
+                  id="transportMs"
+                  name="transportMs"
+                  type="number"
+                  inputmode="decimal"
+                  min="10"
+                  step="1"
+                  value="18"
                 />
               </div>
             </div>
@@ -181,7 +215,7 @@
                 min="0"
                 max="50"
                 step="5"
-                value="0"
+                value="20"
               />
             </div>
           </div>
@@ -190,6 +224,7 @@
         <section class="card" aria-live="polite">
           <h2>計算結果</h2>
           <p id="error" class="error" hidden></p>
+          <p id="duct-warning" class="note" hidden></p>
           <div id="results">
             <div class="hero-metric">
               <div class="label" id="out-hero-label">集塵機總風量</div>
@@ -265,8 +300,10 @@
             <code>CFM = CMH × 0.5886</code>。
           </p>
           <p>
-            Ø35 mm、15 m/s → 截面積 9.62 cm² → <strong>30.6 CMF</strong>（52 CMH）。
-            箱體 0.14 m³ 約 9.7 秒換氣一次。空間換氣算法見「空間換氣（ACH）」。
+            投料站 <code>Q = 開口面積 × 面風速</code>。
+            700 × 500 mm 開口、HSE 1.0 m/s → <strong>742 CMF</strong>；
+            加 20% 選型 <strong>890 CMF</strong>。
+            Ø35 mm 管最多約 30–41 CMF，必須改約 Ø160 mm。
           </p>
         </div>
       </section>
