@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>空間風量計算（CMF / CFM）</title>
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div>
+          <p class="eyebrow">Airflow · CMF / CFM / CMH</p>
+          <h1>這個空間需要多少風量？</h1>
+          <p class="lede">
+            這是 <strong>Dextrose 投料站</strong>（每袋 25 kg）。開口
+            <strong>700 × 500 mm</strong>、進深 400 mm。控制 &lt;200 μm 粉塵
+            要用開口<strong>面風速</strong>，不是 Ø35 mm 管內 15 m/s。
+          </p>
+        </div>
+        <p class="note">
+          Ø35 mm 管在 15 m/s 只有約 30.6 CMF，遠不夠擋住投料口粉塵。請用面風速計算，並加大風管。
+        </p>
+      </header>
+
+      <div class="layout">
+        <form id="cfm-form" class="card" autocomplete="off">
+          <h2>計算條件</h2>
+          <div class="modes" role="radiogroup" aria-label="計算方式">
+            <label>
+              <input type="radio" name="method" value="booth" checked />
+              投料站（開口面風速）
+            </label>
+            <label>
+              <input type="radio" name="method" value="duct" />
+              風管容量（管徑 × 風速）
+            </label>
+            <label>
+              <input type="radio" name="method" value="ach" />
+              空間換氣（ACH）
+            </label>
+          </div>
+          <div class="modes" role="radiogroup" aria-label="尺寸輸入方式">
+            <label>
+              <input type="radio" name="mode" value="mm" checked />
+              長寬高（mm）
+            </label>
+            <label>
+              <input type="radio" name="mode" value="box" />
+              長寬高（m）
+            </label>
+            <label>
+              <input type="radio" name="mode" value="ping" />
+              坪數＋層高
+            </label>
+          </div>
+
+          <div class="grid">
+            <div id="ping-fields" class="field-pair" hidden>
+              <div class="field">
+                <span>坪數</span>
+                <input
+                  id="ping"
+                  name="ping"
+                  type="number"
+                  inputmode="decimal"
+                  min="0.1"
+                  step="0.1"
+                  value="8"
+                />
+              </div>
+              <div class="field">
+                <span>層高（m）</span>
+                <input
+                  id="pingHeight"
+                  name="pingHeight"
+                  type="number"
+                  inputmode="decimal"
+                  min="1"
+                  step="0.1"
+                  value="2.7"
+                />
+              </div>
+            </div>
+            <div id="box-fields" class="field-pair triple">
+              <div class="field">
+                <span id="length-label">長度（mm）</span>
+                <input
+                  id="lengthM"
+                  name="lengthM"
+                  type="number"
+                  inputmode="decimal"
+                  min="1"
+                  step="1"
+                  value="700"
+                />
+              </div>
+              <div class="field">
+                <span id="width-label">寬度（mm）</span>
+                <input
+                  id="widthM"
+                  name="widthM"
+                  type="number"
+                  inputmode="decimal"
+                  min="1"
+                  step="1"
+                  value="400"
+                />
+              </div>
+              <div class="field">
+                <span id="height-label">高度（mm）</span>
+                <input
+                  id="heightM"
+                  name="heightM"
+                  type="number"
+                  inputmode="decimal"
+                  min="1"
+                  step="1"
+                  value="500"
+                />
+              </div>
+            </div>
+            <div id="duct-fields" class="field-pair">
+              <div class="field">
+                <span>抽風管直徑（mm）</span>
+                <input
+                  id="diameterMm"
+                  name="diameterMm"
+                  type="number"
+                  inputmode="decimal"
+                  min="1"
+                  step="1"
+                  value="35"
+                />
+              </div>
+              <div class="field" id="velocity-field">
+                <span>管內風速（m/s）</span>
+                <input
+                  id="velocityMs"
+                  name="velocityMs"
+                  type="number"
+                  inputmode="decimal"
+                  min="0.1"
+                  step="0.1"
+                  value="15"
+                />
+              </div>
+            </div>
+            <div id="booth-fields" class="field-pair">
+              <div class="field wide">
+                <span>開口面風速（控制 &lt;200 μm）</span>
+                <select id="facePresetId" name="facePresetId"></select>
+                <p id="face-hint" class="hint"></p>
+              </div>
+              <div class="field">
+                <span>自訂面風速（m/s）</span>
+                <input
+                  id="faceVelocityMs"
+                  name="faceVelocityMs"
+                  type="number"
+                  inputmode="decimal"
+                  min="0.2"
+                  step="0.01"
+                  value="1"
+                />
+              </div>
+              <div class="field">
+                <span>實際集塵風量（CMF）</span>
+                <input
+                  id="actualCfm"
+                  name="actualCfm"
+                  type="number"
+                  inputmode="decimal"
+                  min="1"
+                  step="10"
+                  value="400"
+                />
+              </div>
+              <div class="field">
+                <span>風管小頭（mm）</span>
+                <input
+                  id="ductMinMm"
+                  name="ductMinMm"
+                  type="number"
+                  min="10"
+                  step="1"
+                  value="120"
+                />
+              </div>
+              <div class="field">
+                <span>風管大頭（mm）</span>
+                <input
+                  id="ductMaxMm"
+                  name="ductMaxMm"
+                  type="number"
+                  min="10"
+                  step="1"
+                  value="150"
+                />
+              </div>
+            </div>
+            <div id="ach-fields" class="ach-fields" hidden>
+              <div class="field">
+                <span>同時使用人數</span>
+                <input
+                  id="people"
+                  name="people"
+                  type="number"
+                  min="0"
+                  step="1"
+                  value="0"
+                />
+              </div>
+              <div class="field wide">
+                <span>空間用途</span>
+                <select id="roomTypeId" name="roomTypeId"></select>
+              </div>
+              <div class="field">
+                <span>每小時換氣次數 ACH</span>
+                <input
+                  id="ach"
+                  name="ach"
+                  type="number"
+                  min="0.35"
+                  step="0.1"
+                  value="5"
+                />
+                <p id="ach-hint" class="hint"></p>
+              </div>
+            </div>
+            <div class="field">
+              <span>選型餘裕（%）</span>
+              <input
+                id="margin"
+                name="margin"
+                type="number"
+                min="0"
+                max="50"
+                step="5"
+                value="20"
+              />
+            </div>
+          </div>
+        </form>
+
+        <section class="card" aria-live="polite">
+          <h2>計算結果</h2>
+          <p id="error" class="error" hidden></p>
+          <p id="duct-warning" class="note" hidden></p>
+          <div id="results">
+            <div class="hero-metric">
+              <div class="label" id="out-hero-label">集塵機總風量</div>
+              <div class="value">
+                <span id="out-design-cfm">—</span>
+                <span class="unit">CMF / CFM</span>
+              </div>
+              <div class="label" id="out-hero-sub">管內計算風量</div>
+            </div>
+            <div class="metrics">
+              <div class="metric">
+                <div class="k">CMH（m³/h）</div>
+                <div class="v">
+                  <span id="out-design-cmh">—</span>
+                </div>
+                <div class="k">需求 <span id="out-required-cmh">—</span></div>
+              </div>
+              <div class="metric">
+                <div class="k">CMM（m³/min）</div>
+                <div class="v" id="out-design-cmm">—</div>
+              </div>
+              <div class="metric">
+                <div class="k">面積</div>
+                <div class="v" id="out-area-line">—</div>
+              </div>
+              <div class="metric">
+                <div class="k">室積</div>
+                <div class="v">
+                  <span id="out-volume">—</span> m³
+                </div>
+                <div class="k"><span id="out-volume-l">—</span> L · ACH <span id="out-ach">—</span></div>
+              </div>
+            </div>
+            <div class="breakdown">
+              <strong id="out-driver">—</strong>
+              <dl>
+                <dt>管截面積</dt>
+                <dd id="out-duct-area">—</dd>
+                <dt>空間類型</dt>
+                <dd id="out-room">—</dd>
+                <dt>換氣次數風量</dt>
+                <dd id="out-by-ach">—</dd>
+                <dt>人數新鮮空氣</dt>
+                <dd id="out-by-people">—</dd>
+                <dt>相當 ACH</dt>
+                <dd id="out-enclosure-ach">—</dd>
+                <dt>換氣週期</dt>
+                <dd id="out-exchange">—</dd>
+              </dl>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <section class="card table-wrap">
+        <h2>常見空間速查（含 20% 餘裕；房間層高 2.7 m，衛浴 2.4 m）</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>空間</th>
+              <th>ACH</th>
+              <th>需求 CFM</th>
+              <th>選型 CFM</th>
+              <th>需求 CMH</th>
+            </tr>
+          </thead>
+          <tbody id="quick-ref-body"></tbody>
+        </table>
+        <div class="formulas">
+          <p>
+            體積 <code>V = 長 × 寬 × 高</code>。集塵機
+            <code>Q = v × π d² / 4</code>，
+            <code>CFM = CMH × 0.5886</code>。
+          </p>
+          <p>
+            投料站 <code>Q = 開口面積 × 面風速</code>。
+            700 × 500 mm 開口、HSE 1.0 m/s → <strong>742 CMF</strong>；
+            加 20% 選型 <strong>890 CMF</strong>。
+            若實際只有 400 CMF：開口面風速約 0.54 m/s（需求 1.0 的 54%），
+            Ø120 mm 管內約 16.7 m/s 尚可，放大到 Ø150 mm 掉到約 10.7 m/s，大管段容易積塵。
+          </p>
+        </div>
+      </section>
+
+      <footer>
+        1 坪 = 3.305785 m²。浴室間歇排氣常見下限約 50 CFM。實際風機還要看機外靜壓、風管長度與濾網阻力。
+      </footer>
+    </div>
+    <script src="js/cfm.js"></script>
+    <script src="js/app.js"></script>
+  </body>
+</html>
