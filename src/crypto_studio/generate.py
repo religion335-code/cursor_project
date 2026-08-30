@@ -22,7 +22,11 @@ def _quote_line(asset_id: str, payload: dict[str, float]) -> str:
     return f"{name}約 {format_usd(usd)} 美元，近二十四小時{change_phrase(change)}。"
 
 
-def compose_episode(brief: dict[str, Any], channel_name: str = "時局筆記") -> dict[str, Any]:
+def compose_episode(
+    brief: dict[str, Any],
+    channel_name: str = "時局筆記",
+    host_name: str = "呱霸",
+) -> dict[str, Any]:
     """Turn a research brief into a reviewable episode. No buy/sell calls."""
     today = date.today().isoformat()
     quotes = brief.get("quotes") or {}
@@ -31,6 +35,7 @@ def compose_episode(brief: dict[str, Any], channel_name: str = "時局筆記") -
 
     quote_lines = [_quote_line(asset_id, data) for asset_id, data in quotes.items()]
     price_block = " ".join(quote_lines) if quote_lines else "價格資料暫時無法取得。"
+    host_intro = f"我是{host_name}。" if host_name else ""
 
     fact_scenes = []
     for index, item in enumerate(top, start=1):
@@ -57,7 +62,7 @@ def compose_episode(brief: dict[str, Any], channel_name: str = "時局筆記") -
         {
             "heading": "今天只講時局",
             "body": (
-                f"這裡是{channel_name}。今天是 {today}。{price_block}"
+                f"這裡是{channel_name}，{host_intro}今天是 {today}。{price_block}"
                 "接下來三則只核對事實與日曆，不喊單、不給目標價、也不做獲利承諾。"
             ),
         },
@@ -85,9 +90,9 @@ def compose_episode(brief: dict[str, Any], channel_name: str = "時局筆記") -
 
     headline_titles = [item.get("title", "") for item in top]
     yt_title = _youtube_title(headline_titles, today)
-    description = _youtube_description(channel_name, today, top)
+    description = _youtube_description(channel_name, today, top, host_name=host_name)
 
-    social_lines = [f"【{channel_name} {today}】"]
+    social_lines = [f"【{channel_name}｜{host_name or '時局'} {today}】"]
     social_lines.extend(quote_lines)
     for item in top:
         social_lines.append(f"· {item.get('title')}")
@@ -126,9 +131,12 @@ def _youtube_title(headlines: list[str], today: str) -> str:
     return title[:100]
 
 
-def _youtube_description(channel_name: str, today: str, headlines: list[dict[str, str]]) -> str:
+def _youtube_description(
+    channel_name: str, today: str, headlines: list[dict[str, str]], host_name: str = ""
+) -> str:
     lines = [
-        f"{channel_name}｜{today}",
+        f"{channel_name}｜{host_name + '｜' if host_name else ''}{today}",
+        f"主持：格林·{host_name}" if host_name else "",
         "",
         DISCLAIMER,
         "",

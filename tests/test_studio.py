@@ -4,7 +4,7 @@ import yaml
 
 from crypto_studio.editorial import validate_episode
 from crypto_studio.generate import compose_episode
-from crypto_studio.render import render_frame, wrap_cjk
+from crypto_studio.render import load_mascot, render_frame, wrap_cjk
 from PIL import Image, ImageDraw, ImageFont
 
 FONT = "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc"
@@ -48,6 +48,7 @@ def test_compose_episode_has_disclaimer_and_private_upload():
     assert episode["youtube"]["privacy"] == "private"
     assert episode["youtube"]["contains_synthetic_media"] is True
     assert "不喊單" in episode["scenes"][0]["body"]
+    assert "呱霸" in episode["scenes"][0]["body"]
     assert "獲利承諾" in episode["scenes"][0]["body"]
 
 
@@ -63,3 +64,17 @@ def test_render_frame_includes_footer():
     assert frame.size == (1920, 1080)
     extrema = frame.getextrema()
     assert extrema[0][0] < 40  # still a dark background somewhere
+
+
+def _green_pixel_count(image: Image.Image) -> int:
+    return sum(1 for red, green, blue in image.getdata() if green > red + 30 and green > blue + 30 and green > 80)
+
+
+def test_mascot_knockout_and_host_credit():
+    path = Path(__file__).resolve().parents[1] / "assets" / "guaba.webp"
+    mascot = load_mascot(path)
+    assert min(mascot.getchannel("A").getextrema()) == 0
+    frame = render_frame("標題", "內文測試。", FONT, host_name="呱霸", mascot=mascot)
+    plain = render_frame("標題", "內文測試。", FONT)
+    assert frame.size == (1920, 1080)
+    assert _green_pixel_count(frame) > _green_pixel_count(plain) + 500

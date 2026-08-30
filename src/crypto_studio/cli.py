@@ -47,7 +47,8 @@ def cmd_draft(args: argparse.Namespace) -> int:
         brief_path.parent.mkdir(parents=True, exist_ok=True)
         brief_path.write_text(json.dumps(brief, ensure_ascii=False, indent=2), encoding="utf-8")
     channel_name = ((config.get("channel") or {}).get("name")) or "時局筆記"
-    episode = compose_episode(brief, channel_name=channel_name)
+    host_name = ((config.get("channel") or {}).get("host_name")) or "呱霸"
+    episode = compose_episode(brief, channel_name=channel_name, host_name=host_name)
     errors = validate_episode(episode)
     if errors:
         print("editorial checks failed:", file=sys.stderr)
@@ -71,6 +72,10 @@ def cmd_render(args: argparse.Namespace) -> int:
         for error in errors:
             print(f"- {error}", file=sys.stderr)
         return 2
+    mascot = channel.get("mascot")
+    mascot_path = Path(mascot) if mascot else ROOT / "assets" / "guaba.webp"
+    if not mascot_path.is_absolute():
+        mascot_path = ROOT / mascot_path
     output = render_episode(
         episode,
         Path(args.out_dir) if args.out_dir else ROOT / "output",
@@ -78,6 +83,8 @@ def cmd_render(args: argparse.Namespace) -> int:
         voice=channel.get("voice") or "zh-TW-HsiaoChenNeural",
         aspect=args.aspect or channel.get("aspect") or "16:9",
         channel_name=channel.get("name") or "時局筆記",
+        host_name=channel.get("host_name") or "呱霸",
+        mascot_path=mascot_path,
     )
     print(output)
     return 0

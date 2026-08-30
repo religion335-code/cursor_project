@@ -1,5 +1,8 @@
 channel:
   name: 時局筆記
+  host_name: 呱霸
+  star_name: 格林·呱霸
+  mascot: assets/guaba.webp
   handle: "@your-handle"
   language: zh-Hant
   default_privacy: private
