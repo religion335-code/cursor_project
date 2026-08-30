@@ -132,8 +132,20 @@ crypto-studio upload output/ep-2026-08-30.mp4 content/episodes/ep-2026-08-30.yam
 
 禁止出現在稿件裡的話：保證獲利、穩賺、必漲、跟單、內線、現在不買就來不及。檢查器會擋下來。
 
-角色設定見 `content/host.yaml`，立繪在 `assets/guaba.webp`。片頭固定：「這裡是時局筆記，我是呱霸。」
+角色設定見 `content/host.yaml`，立繪在 `assets/guaba.webp`。聲音檔請放到 `assets/guaba-voice.mp4`（Windows OneDrive 路徑雲端讀不到，需上傳）。
 
-## 第一集
+## 呱霸入門（01 BTC → 02 ETH → 03 SOL）
 
-`content/episodes/ep-2026-08-30.yaml` 已寫好 2026-08-30 的時局稿：CLARITY 尚未成法、ETF 有進有出、Warsh 鷹派發言後利率敘事壓過法案敘事。渲染後請先自己看一遍再決定是否上傳。
+```bash
+crypto-studio series
+```
+
+- `content/episodes/ep-01-btc.yaml` 比特幣是什麼
+- `content/episodes/ep-02-eth.yaml` 以太坊是什麼
+- `content/episodes/ep-03-sol.yaml` 索拉納是什麼
+
+開場若有 `assets/guaba-voice.mp4`，會先播放呱霸自己的聲音。沒有檔案時，旁白暫用系統語音，並在終端機提示缺少聲音檔。上傳仍須你同意，不會自動上架。
+
+## 時局樣本
+
+`content/episodes/ep-2026-08-30.yaml` 是 2026-08-30 的時局稿，不是入門第一集。

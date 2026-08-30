@@ -8,6 +8,7 @@ channel:
   language: zh-Hant
   default_privacy: private
   voice: zh-TW-HsiaoChenNeural
+  host_voice: assets/guaba-voice.mp4
   aspect: "16:9"
   font: /usr/share/fonts/truetype/wqy/wqy-microhei.ttc
 

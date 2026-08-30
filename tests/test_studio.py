@@ -53,7 +53,12 @@ def test_compose_episode_has_disclaimer_and_private_upload():
     assert "獲利承諾" in episode["scenes"][0]["body"]
 
 
-def test_seed_episode_passes_editorial_gate():
+def test_intro_series_passes_editorial_gate():
+    root = Path(__file__).resolve().parents[1]
+    for name in ("ep-01-btc.yaml", "ep-02-eth.yaml", "ep-03-sol.yaml"):
+        episode = yaml.safe_load((root / "content" / "episodes" / name).read_text(encoding="utf-8"))
+        assert validate_episode(episode) == [], name
+        assert "呱霸" in episode["scenes"][0]["body"]
     path = Path(__file__).resolve().parents[1] / "content" / "episodes" / "ep-2026-08-30.yaml"
     episode = yaml.safe_load(path.read_text(encoding="utf-8"))
     assert validate_episode(episode) == []

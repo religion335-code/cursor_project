@@ -139,7 +139,59 @@ def _audio_seconds(path: Path) -> float:
 
 
 def _run_ffmpeg(args: list[str]) -> None:
-    subprocess.run(args, check=True, capture_output=True)
+    completed = subprocess.run(args, capture_output=True, text=True)
+    if completed.returncode != 0:
+        raise RuntimeError(completed.stderr[-2000:] if completed.stderr else "ffmpeg failed")
+
+
+def _still_clip(png_path: Path, audio_path: Path, clip_path: Path, duration: float) -> None:
+    _run_ffmpeg(
+        [
+            "ffmpeg",
+            "-y",
+            "-loop",
+            "1",
+            "-i",
+            str(png_path),
+            "-i",
+            str(audio_path),
+            "-c:v",
+            "libx264",
+            "-tune",
+            "stillimage",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:a",
+            "aac",
+            "-shortest",
+            "-t",
+            f"{duration:.2f}",
+            str(clip_path),
+        ]
+    )
+
+
+def extract_host_voice(source: Path, dest_mp3: Path, max_seconds: float = 20.0) -> float:
+    """Turn Guaba's recorded mp4/mp3 into a bumper clip. Missing files return 0."""
+    if not source.exists():
+        return 0.0
+    _run_ffmpeg(
+        [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(source),
+            "-vn",
+            "-ac",
+            "1",
+            "-ar",
+            "24000",
+            "-t",
+            str(max_seconds),
+            str(dest_mp3),
+        ]
+    )
+    return _audio_seconds(dest_mp3)
 
 
 def render_episode(
@@ -151,6 +203,7 @@ def render_episode(
     channel_name: str = "時局筆記",
     host_name: str = "",
     mascot_path: Path | None = None,
+    host_voice_path: Path | None = None,
 ) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
     episode_id = episode.get("id") or "episode"
@@ -164,6 +217,24 @@ def render_episode(
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
         clip_list: list[Path] = []
+        if host_voice_path and host_voice_path.exists():
+            bumper_audio = tmp_path / "guaba-voice.mp3"
+            bumper_seconds = extract_host_voice(host_voice_path, bumper_audio)
+            if bumper_seconds > 0.4:
+                bumper_png = tmp_path / "scene-host.png"
+                bumper_clip = tmp_path / "scene-host.mp4"
+                render_frame(
+                    "格林·呱霸",
+                    "時局筆記固定主持。綠臉扛棒，只用他自己的聲音開場，後面只講可核對的事。",
+                    font_path,
+                    aspect=aspect,
+                    channel_name=channel_name,
+                    host_name=host_name,
+                    mascot=mascot,
+                ).save(bumper_png)
+                _still_clip(bumper_png, bumper_audio, bumper_clip, bumper_seconds + 0.2)
+                clip_list.append(bumper_clip)
+
         for index, scene in enumerate(scenes):
             heading = scene.get("heading") or ""
             body = scene.get("body") or ""
@@ -181,31 +252,7 @@ def render_episode(
             clip_path = tmp_path / f"scene-{index:02d}.mp4"
             frame.save(png_path)
             asyncio.run(_synthesize(f"{heading}。{body}", voice, mp3_path))
-            duration = _audio_seconds(mp3_path) + 0.35
-            _run_ffmpeg(
-                [
-                    "ffmpeg",
-                    "-y",
-                    "-loop",
-                    "1",
-                    "-i",
-                    str(png_path),
-                    "-i",
-                    str(mp3_path),
-                    "-c:v",
-                    "libx264",
-                    "-tune",
-                    "stillimage",
-                    "-pix_fmt",
-                    "yuv420p",
-                    "-c:a",
-                    "aac",
-                    "-shortest",
-                    "-t",
-                    f"{duration:.2f}",
-                    str(clip_path),
-                ]
-            )
+            _still_clip(png_path, mp3_path, clip_path, _audio_seconds(mp3_path) + 0.35)
             clip_list.append(clip_path)
 
         concat_file = tmp_path / "concat.txt"

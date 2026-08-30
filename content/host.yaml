@@ -12,3 +12,5 @@ do_not_call:
 notes: >
   藝名兩個字好喊。格林是綠色與歐美明星姓氏；呱是蛙鳴，霸是背心加球棒。
   不要叫 Pepe，那是別人的著作權角色。
+  聲音檔請放到 assets/guaba-voice.mp4（本機 OneDrive 路徑雲端讀不到）。
+voice_file: assets/guaba-voice.mp4

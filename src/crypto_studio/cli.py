@@ -81,6 +81,13 @@ def cmd_render(args: argparse.Namespace) -> int:
     mascot_path = Path(mascot) if mascot else ROOT / "assets" / "guaba.webp"
     if not mascot_path.is_absolute():
         mascot_path = ROOT / mascot_path
+    host_voice_path = _resolve(channel.get("host_voice") or "assets/guaba-voice.mp4")
+    if not host_voice_path.exists():
+        print(
+            "找不到呱霸聲音檔 assets/guaba-voice.mp4。"
+            "請把本機 voice.mp4 上傳到專案，開場才會用他自己的聲音。",
+            file=sys.stderr,
+        )
     output = render_episode(
         episode,
         Path(args.out_dir) if args.out_dir else ROOT / "output",
@@ -90,6 +97,7 @@ def cmd_render(args: argparse.Namespace) -> int:
         channel_name=channel.get("name") or "時局筆記",
         host_name=channel.get("host_name") or "呱霸",
         mascot_path=mascot_path,
+        host_voice_path=host_voice_path,
     )
     print(output)
     return 0
@@ -198,6 +206,26 @@ def cmd_channel(args: argparse.Namespace) -> int:
     return 0
 
 
+INTRO_EPISODES = [
+    "content/episodes/ep-01-btc.yaml",
+    "content/episodes/ep-02-eth.yaml",
+    "content/episodes/ep-03-sol.yaml",
+]
+
+
+def cmd_series(args: argparse.Namespace) -> int:
+    for relative in INTRO_EPISODES:
+        render_args = argparse.Namespace(
+            episode=str(ROOT / relative),
+            out_dir=args.out_dir,
+            aspect=args.aspect,
+        )
+        print(relative)
+        if cmd_render(render_args) != 0:
+            return 2
+    return 0
+
+
 def cmd_pack(args: argparse.Namespace) -> int:
     draft_args = argparse.Namespace(brief=None, refresh=True, out=None)
     if cmd_draft(draft_args) != 0:
@@ -257,6 +285,11 @@ def build_parser() -> argparse.ArgumentParser:
     channel.add_argument("--client-secrets", default="client_secret.json")
     channel.add_argument("--token", default="token.json")
     channel.set_defaults(func=cmd_channel)
+
+    series = sub.add_parser("series", help="Render 呱霸入門 01 BTC, 02 ETH, 03 SOL")
+    series.add_argument("--out-dir")
+    series.add_argument("--aspect", choices=["16:9", "9:16"])
+    series.set_defaults(func=cmd_series)
 
     pack = sub.add_parser("pack", help="Research + draft + render in one step")
     pack.add_argument("--aspect", choices=["16:9", "9:16"])
