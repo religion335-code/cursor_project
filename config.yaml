@@ -1,0 +1,25 @@
+channel:
+  name: 時局筆記
+  host_name: 呱霸
+  star_name: 格林·呱霸
+  mascot: assets/guaba.webp
+  handle: "@your-handle"
+  brand_account_id: "116668811009377713630"
+  language: zh-Hant
+  default_privacy: private
+  voice: zh-TW-HsiaoChenNeural
+  host_voice: assets/guaba-voice.mp4
+  aspect: "16:9"
+  font: /usr/share/fonts/truetype/wqy/wqy-microhei.ttc
+
+editorial:
+  allow_public_upload: false
+  require_disclaimer: true
+  no_price_targets: true
+  no_buy_sell_calls: true
+
+research:
+  quote_ids: [bitcoin, ethereum, solana]
+  feeds:
+    - https://www.coindesk.com/arc/outboundfeeds/rss/
+    - https://decrypt.co/feed
