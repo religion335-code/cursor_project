@@ -5,6 +5,7 @@ __pycache__/
 .mypy_cache/
 .env
 client_secret.json
+client_secret.json.json
 token.json
 output/*.mp4
 output/*.mp3
