@@ -86,21 +86,27 @@ YouTube Data API v3 啟用之後，還要做 **Google 驗證平台** 和 **電�
 3. 名稱填 `時局筆記 desktop` → **建立**。
 4. 按 **下載 JSON**，把檔案重新命名成 `client_secret.json`，放到本專案根目錄（已在 `.gitignore`，不要貼到聊天室）。
 
-### 3. 授權品牌頻道
+### 3. 授權品牌頻道（只授權，不上傳）
+
+Google 授權做一次即可。之後**每一支影片仍要你點頭**才會上傳，`pack` 只產片、不會上架。
 
 ```bash
-crypto-studio channel
+crypto-studio auth
 ```
 
-瀏覽器若出現帳戶清單，**選品牌頻道，不要選個人 Gmail**。若出現未驗證警告：左下 **進階** → **前往時局筆記（不安全）** → 允許 YouTube 上傳與檢視頻道。
-
-確認印出的頻道名稱是時局筆記之後，再上傳私人草稿：
+把印出的網址在瀏覽器打開，選 **品牌頻道**。授權後會跳到打不開的 `localhost` 頁面：把網址列整段複製回來：
 
 ```bash
-crypto-studio upload output/ep-2026-08-30.mp4 content/episodes/ep-2026-08-30.yaml
+crypto-studio auth --redirect-url "http://localhost:8080/?code=..."
 ```
 
-公開上架必須你自己加 `--privacy public --allow-public`，且必須已經看過成片。沒有 `client_secret.json` 時指令會拒絕執行。
+確認印出的頻道名稱是時局筆記。上傳某一集時必須帶同意旗標：
+
+```bash
+crypto-studio upload output/ep-2026-08-30.mp4 content/episodes/ep-2026-08-30.yaml --i-approve-upload
+```
+
+沒有 `--i-approve-upload` 會直接拒絕。公開上架還要再加 `--privacy public --allow-public`。
 
 ## 品牌頻道怎麼命名
 

@@ -7,6 +7,7 @@ __pycache__/
 client_secret.json
 client_secret.json.json
 token.json
+oauth_pending.json
 output/*.mp4
 output/*.mp3
 output/*.png

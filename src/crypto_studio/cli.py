@@ -22,6 +22,11 @@ def _write_yaml(path: Path, data: dict) -> None:
     )
 
 
+def _resolve(path_str: str) -> Path:
+    path = Path(path_str)
+    return path if path.is_absolute() else ROOT / path
+
+
 def _load_episode(path: Path) -> dict:
     with path.open(encoding="utf-8") as handle:
         return yaml.safe_load(handle)
@@ -93,6 +98,12 @@ def cmd_render(args: argparse.Namespace) -> int:
 def cmd_upload(args: argparse.Namespace) -> int:
     from crypto_studio.youtube_upload import UploadError, upload_video
 
+    if not args.i_approve_upload:
+        print(
+            "每一支影片都要你明確同意才會上傳。確認要傳這一支之後，請加上 --i-approve-upload。",
+            file=sys.stderr,
+        )
+        return 2
     episode = _load_episode(Path(args.episode))
     if args.privacy == "public" and not args.allow_public:
         print(
@@ -100,8 +111,8 @@ def cmd_upload(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 2
-    secrets = Path(args.client_secrets)
-    token = Path(args.token)
+    secrets = _resolve(args.client_secrets)
+    token = _resolve(args.token)
     if not secrets.exists():
         print(
             "Missing YouTube OAuth client secrets. Create a Google Cloud desktop OAuth client, "
@@ -117,6 +128,7 @@ def cmd_upload(args: argparse.Namespace) -> int:
             token,
             privacy=args.privacy,
             allow_public=args.allow_public,
+            i_approve_upload=True,
         )
     except UploadError as exc:
         print(str(exc), file=sys.stderr)
@@ -130,11 +142,46 @@ def cmd_upload(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_auth(args: argparse.Namespace) -> int:
+    from crypto_studio.youtube_upload import (
+        PENDING_NAME,
+        UploadError,
+        connect_youtube,
+        finish_authorization,
+        start_authorization,
+    )
+
+    secrets = _resolve(args.client_secrets)
+    token = _resolve(args.token)
+    pending = ROOT / PENDING_NAME
+    if not secrets.exists():
+        print("找不到 client_secret.json。請放在專案根目錄（和 README.md 同一層）。", file=sys.stderr)
+        return 2
+    try:
+        if args.redirect_url:
+            finish_authorization(args.redirect_url, pending, token)
+            _, channel = connect_youtube(secrets, token)
+            print(json.dumps({"ok": True, "channel": channel}, ensure_ascii=False, indent=2))
+            return 0
+        url = start_authorization(secrets, pending)
+    except UploadError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    print(url)
+    print(
+        "\n請在瀏覽器打開上面的網址，選品牌頻道（不要選 Gmail）。"
+        "授權後瀏覽器會跳到打不開的 localhost 頁面：把網址列整段複製回來交給我，或執行：\n"
+        'crypto-studio auth --redirect-url "貼上的網址"',
+        file=sys.stderr,
+    )
+    return 0
+
+
 def cmd_channel(args: argparse.Namespace) -> int:
     from crypto_studio.youtube_upload import UploadError, connect_youtube
 
-    secrets = Path(args.client_secrets)
-    token = Path(args.token)
+    secrets = _resolve(args.client_secrets)
+    token = _resolve(args.token)
     if not secrets.exists():
         print(
             "Missing client_secret.json. Enable YouTube Data API v3, create a Desktop OAuth client, "
@@ -193,7 +240,18 @@ def build_parser() -> argparse.ArgumentParser:
     upload.add_argument("--token", default="token.json")
     upload.add_argument("--privacy", default="private", choices=["private", "unlisted", "public"])
     upload.add_argument("--allow-public", action="store_true")
+    upload.add_argument(
+        "--i-approve-upload",
+        action="store_true",
+        help="Required. Every upload needs explicit approval; this command never runs silently.",
+    )
     upload.set_defaults(func=cmd_upload)
+
+    auth = sub.add_parser("auth", help="Start or finish Google OAuth for the brand channel (does not upload)")
+    auth.add_argument("--client-secrets", default="client_secret.json")
+    auth.add_argument("--token", default="token.json")
+    auth.add_argument("--redirect-url", help="Paste the localhost URL after you approve access")
+    auth.set_defaults(func=cmd_auth)
 
     channel = sub.add_parser("channel", help="Show which YouTube channel the OAuth token can upload to")
     channel.add_argument("--client-secrets", default="client_secret.json")

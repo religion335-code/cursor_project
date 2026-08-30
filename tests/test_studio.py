@@ -3,6 +3,7 @@ from pathlib import Path
 import yaml
 
 from crypto_studio.editorial import validate_episode
+from crypto_studio.youtube_upload import UploadError, _normalize_redirect, upload_video
 from crypto_studio.generate import compose_episode
 from crypto_studio.render import load_mascot, render_frame, wrap_cjk
 from PIL import Image, ImageDraw, ImageFont
@@ -78,3 +79,23 @@ def test_mascot_knockout_and_host_credit():
     plain = render_frame("標題", "內文測試。", FONT)
     assert frame.size == (1920, 1080)
     assert _green_pixel_count(frame) > _green_pixel_count(plain) + 500
+
+
+def test_upload_requires_explicit_approval():
+    try:
+        upload_video(
+            Path("/tmp/missing.mp4"),
+            {"youtube": {"privacy": "private"}},
+            Path("/tmp/missing-secrets.json"),
+            Path("/tmp/missing-token.json"),
+            i_approve_upload=False,
+        )
+    except UploadError as exc:
+        assert "同意" in str(exc)
+    else:
+        raise AssertionError("expected UploadError")
+
+
+def test_normalize_redirect_accepts_code_only():
+    assert "code=abc" in _normalize_redirect("code=abc&scope=x")
+    assert _normalize_redirect("http://localhost:8080/?code=abc").startswith("http://localhost")
