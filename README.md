@@ -59,23 +59,48 @@ crypto-studio render content/episodes/ep-2026-08-30.yaml --aspect 9:16
 
 ## 上傳 YouTube（可選，預設私人）
 
-1. 在 [Google Cloud Console](https://console.cloud.google.com/) 建立專案，啟用 **YouTube Data API v3**。
-2. 建立 **Desktop** OAuth 用戶端，下載 JSON，存成專案根目錄的 `client_secret.json`（已在 `.gitignore`）。
-3. 第一次上傳會開瀏覽器授權你的頻道：
+YouTube Data API v3 啟用之後，還要做 **Google 驗證平台** 和 **電腦版 OAuth 用戶端**。這兩步不是搜尋「desktop Oauth」，而是在 [Google Auth Platform 總覽](https://console.cloud.google.com/auth/overview) 操作。
+
+### 1. 點「開始」（設定同意畫面）
+
+若看到「尚未設定 Google 驗證平台」，按藍色 **開始**：
+
+1. **應用程式資訊：** 應用程式名稱填 `時局筆記`；使用者支援電子郵件選你的 Gmail。
+2. **目標對象：** 選 **外部**（個人 Gmail 沒有「內部」）。
+3. **聯絡資料：** 再填一次你的 Gmail。
+4. 勾選同意、**建立**。
+
+然後到左側 **目標對象 → 測試使用者 → 新增**，加入**管理這個品牌頻道的那封 Gmail**。測試中的應用只有這些人能授權。
+
+左側 **資料存取權 → 新增範圍**，搜尋並勾選：
+
+- `https://www.googleapis.com/auth/youtube.upload`
+- `https://www.googleapis.com/auth/youtube.readonly`
+
+儲存。未通過 Google 驗證前，授權畫面會寫「Google 尚未驗證這個應用程式」，這是正常的。
+
+### 2. 建立「電腦版應用程式」用戶端
+
+1. 左側按 **用戶端** → **建立用戶端**。
+2. 應用程式類型選 **電腦版應用程式**（Desktop app）。不要選網頁應用程式，也不要建立 API 金鑰。
+3. 名稱填 `時局筆記 desktop` → **建立**。
+4. 按 **下載 JSON**，把檔案重新命名成 `client_secret.json`，放到本專案根目錄（已在 `.gitignore`，不要貼到聊天室）。
+
+### 3. 授權品牌頻道
+
+```bash
+crypto-studio channel
+```
+
+瀏覽器若出現帳戶清單，**選品牌頻道，不要選個人 Gmail**。若出現未驗證警告：左下 **進階** → **前往時局筆記（不安全）** → 允許 YouTube 上傳與檢視頻道。
+
+確認印出的頻道名稱是時局筆記之後，再上傳私人草稿：
 
 ```bash
 crypto-studio upload output/ep-2026-08-30.mp4 content/episodes/ep-2026-08-30.yaml
 ```
 
-這會上傳成**私人**影片。若要公開，必須你自己加 `--privacy public --allow-public`，且你必須已經看過成片。
-
-沒有 `client_secret.json` 時，指令會拒絕執行，避免誤把稿件丟到錯誤帳號。
-
-授權視窗若出現帳戶清單，**一定要選品牌頻道**，不要選個人 Gmail。選錯的話，影片會進另一個頻道。可用下面指令確認現在連到哪裡：
-
-```bash
-crypto-studio channel
-```
+公開上架必須你自己加 `--privacy public --allow-public`，且必須已經看過成片。沒有 `client_secret.json` 時指令會拒絕執行。
 
 ## 品牌頻道怎麼命名
 
