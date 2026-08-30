@@ -87,6 +87,12 @@ def cmd_upload(args: argparse.Namespace) -> int:
     from crypto_studio.youtube_upload import UploadError, upload_video
 
     episode = _load_episode(Path(args.episode))
+    if args.privacy == "public" and not args.allow_public:
+        print(
+            "Refusing public upload. Watch the cut, then pass --privacy public --allow-public if you still want it live.",
+            file=sys.stderr,
+        )
+        return 2
     secrets = Path(args.client_secrets)
     token = Path(args.token)
     if not secrets.exists():

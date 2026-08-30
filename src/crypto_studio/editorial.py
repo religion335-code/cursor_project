@@ -7,6 +7,17 @@ from typing import Any
 FORBIDDEN = ("保證獲利", "穩賺", "必漲", "跟單", "內線", "現在不買就來不及")
 
 
+def _mentions_forbidden(blob: str, phrase: str) -> bool:
+    start = 0
+    while True:
+        index = blob.find(phrase, start)
+        if index < 0:
+            return False
+        if index == 0 or blob[index - 1] != "不":
+            return True
+        start = index + len(phrase)
+
+
 def validate_episode(episode: dict[str, Any]) -> list[str]:
     errors: list[str] = []
     scenes = episode.get("scenes") or []
@@ -19,7 +30,7 @@ def validate_episode(episode: dict[str, Any]) -> list[str]:
         + [((episode.get("social") or {}).get("telegram") or "")]
     )
     for phrase in FORBIDDEN:
-        if phrase in blob:
+        if _mentions_forbidden(blob, phrase):
             errors.append(f"forbidden phrase: {phrase}")
     if "非投資建議" not in blob and "不構成投資" not in blob:
         errors.append("missing investment disclaimer")

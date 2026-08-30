@@ -58,7 +58,7 @@ def compose_episode(brief: dict[str, Any], channel_name: str = "時局筆記") -
             "heading": "今天只講時局",
             "body": (
                 f"這裡是{channel_name}。今天是 {today}。{price_block}"
-                "接下來三則只核對事實與日曆，不喊單、不給目標價、不保證獲利。"
+                "接下來三則只核對事實與日曆，不喊單、不給目標價、也不做獲利承諾。"
             ),
         },
         *fact_scenes,

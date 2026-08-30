@@ -48,6 +48,7 @@ def test_compose_episode_has_disclaimer_and_private_upload():
     assert episode["youtube"]["privacy"] == "private"
     assert episode["youtube"]["contains_synthetic_media"] is True
     assert "不喊單" in episode["scenes"][0]["body"]
+    assert "獲利承諾" in episode["scenes"][0]["body"]
 
 
 def test_seed_episode_passes_editorial_gate():
