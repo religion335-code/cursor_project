@@ -121,7 +121,33 @@ def cmd_upload(args: argparse.Namespace) -> int:
     except UploadError as exc:
         print(str(exc), file=sys.stderr)
         return 2
-    print(json.dumps({"id": response.get("id"), "status": response.get("status")}, ensure_ascii=False, indent=2))
+    payload = {
+        "id": response.get("id"),
+        "status": response.get("status"),
+        "channel": response.get("authorizedChannel"),
+    }
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
+    return 0
+
+
+def cmd_channel(args: argparse.Namespace) -> int:
+    from crypto_studio.youtube_upload import UploadError, connect_youtube
+
+    secrets = Path(args.client_secrets)
+    token = Path(args.token)
+    if not secrets.exists():
+        print(
+            "Missing client_secret.json. Enable YouTube Data API v3, create a Desktop OAuth client, "
+            "and save it here. When the browser asks which account, pick the brand channel — not Gmail.",
+            file=sys.stderr,
+        )
+        return 2
+    try:
+        _, channel = connect_youtube(secrets, token)
+    except UploadError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    print(json.dumps(channel, ensure_ascii=False, indent=2))
     return 0
 
 
@@ -168,6 +194,11 @@ def build_parser() -> argparse.ArgumentParser:
     upload.add_argument("--privacy", default="private", choices=["private", "unlisted", "public"])
     upload.add_argument("--allow-public", action="store_true")
     upload.set_defaults(func=cmd_upload)
+
+    channel = sub.add_parser("channel", help="Show which YouTube channel the OAuth token can upload to")
+    channel.add_argument("--client-secrets", default="client_secret.json")
+    channel.add_argument("--token", default="token.json")
+    channel.set_defaults(func=cmd_channel)
 
     pack = sub.add_parser("pack", help="Research + draft + render in one step")
     pack.add_argument("--aspect", choices=["16:9", "9:16"])

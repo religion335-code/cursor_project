@@ -9,7 +9,10 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
-SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
+SCOPES = [
+    "https://www.googleapis.com/auth/youtube.upload",
+    "https://www.googleapis.com/auth/youtube.readonly",
+]
 
 
 class UploadError(RuntimeError):
@@ -32,6 +35,28 @@ def load_credentials(client_secrets: Path, token_path: Path) -> Credentials:
     return creds
 
 
+def fetch_authorized_channel(youtube) -> dict[str, Any]:
+    response = youtube.channels().list(part="id,snippet", mine=True).execute()
+    items = response.get("items") or []
+    if not items:
+        raise UploadError(
+            "這個 Google 登入沒有 YouTube 頻道。授權視窗請改選品牌帳戶，不要選個人 Gmail。"
+        )
+    snippet = items[0].get("snippet") or {}
+    return {
+        "id": items[0].get("id"),
+        "title": snippet.get("title"),
+        "customUrl": snippet.get("customUrl"),
+    }
+
+
+def connect_youtube(client_secrets: Path, token_path: Path):
+    creds = load_credentials(client_secrets, token_path)
+    youtube = build("youtube", "v3", credentials=creds)
+    channel = fetch_authorized_channel(youtube)
+    return youtube, channel
+
+
 def upload_video(
     video_path: Path,
     episode: dict[str, Any],
@@ -51,8 +76,7 @@ def upload_video(
     if status not in {"private", "unlisted", "public"}:
         raise UploadError(f"invalid privacy: {status}")
 
-    creds = load_credentials(client_secrets, token_path)
-    youtube = build("youtube", "v3", credentials=creds)
+    youtube, channel = connect_youtube(client_secrets, token_path)
     body = {
         "snippet": {
             "title": youtube_meta.get("title") or episode.get("title") or "時局筆記",
@@ -72,4 +96,5 @@ def upload_video(
     response = None
     while response is None:
         _, response = request.next_chunk()
+    response["authorizedChannel"] = channel
     return response

@@ -71,6 +71,25 @@ crypto-studio upload output/ep-2026-08-30.mp4 content/episodes/ep-2026-08-30.yam
 
 沒有 `client_secret.json` 時，指令會拒絕執行，避免誤把稿件丟到錯誤帳號。
 
+授權視窗若出現帳戶清單，**一定要選品牌頻道**，不要選個人 Gmail。選錯的話，影片會進另一個頻道。可用下面指令確認現在連到哪裡：
+
+```bash
+crypto-studio channel
+```
+
+## 品牌頻道怎麼命名
+
+這是 Google **品牌帳戶**（YouTube Brand Channel），和個人信箱是分開的。建議：
+
+| 位置 | 填什麼 | 在哪改 |
+|------|--------|--------|
+| 品牌帳戶姓名 | 姓 `格林`、名 `呱霸` | [Google 帳戶 → 個人資料](https://myaccount.google.com/)（先切到品牌帳戶） |
+| YouTube 頻道名稱 | `時局筆記` | [YouTube 工作室 → 自訂設定 → 基本資料](https://studio.youtube.com/) |
+| 頭像 | `assets/guaba.webp` | 同一頁上傳 |
+| 頻道代號 | `@guaba` 或 `@shiju-guaba`（英數） | 工作室 → 自訂設定 |
+
+請不要把帶 `rapt=` 的 Google 連結傳出來，那是登入憑證。
+
 ## 頻道建議（不要做成帶單頻道）
 
 固定單元比每天追漲跌更耐看：

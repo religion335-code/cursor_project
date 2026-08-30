@@ -4,6 +4,7 @@ channel:
   star_name: 格林·呱霸
   mascot: assets/guaba.webp
   handle: "@your-handle"
+  brand_account_id: "116668811009377713630"
   language: zh-Hant
   default_privacy: private
   voice: zh-TW-HsiaoChenNeural
