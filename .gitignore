@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.env
+client_secret.json
+token.json
+output/*.mp4
+output/*.mp3
+output/*.png
+output/clips/
+*.egg-info/
+dist/
+build/
+.DS_Store

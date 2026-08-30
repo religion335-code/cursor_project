@@ -1,0 +1,21 @@
+channel:
+  name: 時局筆記
+  handle: "@your-handle"
+  language: zh-Hant
+  default_privacy: private
+  voice: zh-TW-HsiaoChenNeural
+  aspect: "16:9"
+  font: /usr/share/fonts/truetype/wqy/wqy-microhei.ttc
+
+editorial:
+  # Never auto-publish public videos. Review every draft first.
+  allow_public_upload: false
+  require_disclaimer: true
+  no_price_targets: true
+  no_buy_sell_calls: true
+
+research:
+  quote_ids: [bitcoin, ethereum, solana]
+  feeds:
+    - https://www.coindesk.com/arc/outboundfeeds/rss/
+    - https://decrypt.co/feed
