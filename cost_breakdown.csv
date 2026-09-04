@@ -1,0 +1,20 @@
+item,unit,qty_per_label,unit_price_twd,cost_twd,cost_myr,notes
+SJIC46P cyan,ml,0.00167,26.40,0.044,0.006,50ml cartridge NT$1320; production quality +12% maint
+SJIC46P magenta,ml,0.00683,26.40,0.180,0.024,heaviest color after black; Pantone 1775 C
+SJIC46P yellow,ml,0.00478,26.40,0.126,0.017,mixed with M for P.1775 C
+SJIC46P black,ml,0.00661,26.40,0.174,0.023,dense instructional text
+ink_subtotal_with_maintenance,label,1,,0.525,0.069,includes 12% cleaning
+PET_strong_adhesive_102mm_continuous,label,1,4.30,4.300,0.566,65% premium vs matte film NT$2.61
+SJMB4000_maintenance_box,label,1,0.027,0.027,0.004,NT$1330 / 50000 labels
+consumable_total,label,1,,4.852,0.638,recommended quote
+ink_low_draft,label,1,,0.421,0.055,5.3 ml/m2 laydown
+ink_high_1200dpi,label,1,,0.705,0.093,8.5 ml/m2 laydown
+media_jiaozhi_standard_not_strong,label,1,,2.61,0.343,yesbuy-equivalent 102mm 30m film
+media_pet_strong_high,label,1,,4.69,0.617,80% premium continuous
+range_low_total,label,1,,4.06,0.534,draft ink + standard film
+range_high_total,label,1,,5.47,0.720,1200dpi + PET strong 80%
+printer_street_twd,unit,1,62790,62790,8262,Taiwan CW-C4050
+payback_vs_outsource_nt10,labels,12193,,,,"(62790)/(10-4.85)"
+label_size_mm,mm,152.5x101.5,,,,feed 101.5mm as web width
+coverage_tac_pct,pct,17.65,,,,C1.48 M6.06 Y4.24 K5.86
+fx_myr_per_twd,rate,0.1316,,,,1 MYR = 7.6 TWD
