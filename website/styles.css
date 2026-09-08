@@ -478,6 +478,30 @@ h1 span {
   margin-right: auto;
 }
 
+.region-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 1280px;
+  margin: 0 auto 20px;
+}
+
+.region-chips button {
+  font: inherit;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  padding: 8px 12px;
+  border: 1px solid var(--forest);
+  background: transparent;
+  color: var(--forest);
+  cursor: pointer;
+}
+
+.region-chips button.is-on {
+  background: var(--forest);
+  color: var(--cream);
+}
+
 .map-wrap {
   display: grid;
   grid-template-columns: 0.9fr 1.1fr;

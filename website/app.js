@@ -60,12 +60,18 @@ const regionFixed = {
 
 const mapPanel = document.getElementById("map-panel");
 const regionNodes = document.querySelectorAll(".region");
+const regionChips = document.querySelectorAll(".region-chips button");
 
 function renderRegion(key) {
   const data = regions[key];
   if (!data || !mapPanel) return;
   regionNodes.forEach((node) => {
     node.classList.toggle("is-on", node.dataset.region === key);
+  });
+  regionChips.forEach((chip) => {
+    const on = chip.dataset.region === key;
+    chip.classList.toggle("is-on", on);
+    chip.setAttribute("aria-selected", String(on));
   });
   mapPanel.innerHTML = `
     <p class="map-kicker">${data.kicker}</p>
@@ -75,7 +81,7 @@ function renderRegion(key) {
   `;
 }
 
-regionNodes.forEach((node) => {
+function bindRegionControl(node) {
   node.addEventListener("click", () => renderRegion(node.dataset.region));
   node.addEventListener("keydown", (event) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -83,9 +89,14 @@ regionNodes.forEach((node) => {
       renderRegion(node.dataset.region);
     }
   });
+}
+
+regionNodes.forEach((node) => {
   node.setAttribute("tabindex", "0");
   node.setAttribute("role", "button");
+  bindRegionControl(node);
 });
+regionChips.forEach((chip) => bindRegionControl(chip));
 
 const volume = document.getElementById("calc-volume");
 const price = document.getElementById("calc-price");
