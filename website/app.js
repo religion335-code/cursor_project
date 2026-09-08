@@ -199,11 +199,6 @@ if (form) {
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")}</pre>`;
     copyBtn.hidden = false;
-    try {
-      localStorage.setItem("megoo-franchise-draft", JSON.stringify(data));
-    } catch (error) {
-      /* ignore */
-    }
   });
 }
 
@@ -212,20 +207,16 @@ if (copyBtn) {
     if (!draft) return;
     try {
       await navigator.clipboard.writeText(draft);
-      statusEl.textContent = "已複製意向信，可直接貼到郵件或 LINE。";
+      copyBtn.textContent = "已複製";
+      const preview = statusEl.querySelector(".letter-preview");
+      const note = "已複製意向信，可直接貼到郵件或 LINE。";
+      if (preview) {
+        statusEl.innerHTML = `${note}<pre class="letter-preview">${preview.innerHTML}</pre>`;
+      } else {
+        statusEl.textContent = note;
+      }
     } catch (error) {
       statusEl.textContent = "無法自動複製，請手動選取郵件草稿內容。";
     }
   });
-}
-
-try {
-  const saved = JSON.parse(localStorage.getItem("megoo-franchise-draft") || "null");
-  if (saved && form) {
-    Object.entries(saved).forEach(([key, value]) => {
-      if (form.elements[key] && key !== "risk") form.elements[key].value = value;
-    });
-  }
-} catch (error) {
-  /* ignore */
 }
