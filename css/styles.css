@@ -10,8 +10,11 @@
   --ok: #9ad7b5;
   --warn: #f0c38a;
   --shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
-  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, "Songti TC",
-    "Noto Serif TC", Georgia, serif;
+  --sans: "Avenir Next", "Segoe UI", "PingFang TC", "Noto Sans TC",
+    "Noto Sans", sans-serif;
+  --serif: "Iowan Old Style", Palatino, "Songti TC", "Noto Serif TC", Georgia,
+    serif;
+  font-family: var(--sans);
 }
 
 * {
@@ -79,8 +82,8 @@ footer nav {
 .chip-need,
 .plan em {
   color: var(--muted);
-  font-family: "Avenir Next", "Segoe UI", sans-serif;
-  letter-spacing: 0.04em;
+  font-family: var(--sans);
+  letter-spacing: 0.02em;
 }
 
 .kicker,
@@ -97,6 +100,7 @@ h2,
 h3 {
   margin: 0;
   font-weight: 650;
+  font-family: var(--serif);
 }
 
 .hero {
@@ -104,9 +108,9 @@ h3 {
 }
 
 h1 {
-  font-size: clamp(36px, 6vw, 64px);
-  line-height: 1.05;
-  max-width: 16ch;
+  font-size: clamp(36px, 5.4vw, 58px);
+  line-height: 1.12;
+  max-width: 13em;
 }
 
 .lead,

@@ -58,7 +58,6 @@ function renderPlatformButtons(t, selectedId) {
     return `
       <button type="button" class="chip" data-platform="${p.id}" aria-pressed="${pressed}">
         <span class="chip-name">${copy.name}</span>
-        <span class="chip-need">${p.needs}</span>
       </button>`;
   }).join("");
 }
@@ -134,9 +133,9 @@ function render(state) {
 
     <section class="panel detect" aria-labelledby="detect-label">
       <div class="detect-copy">
-        <p class="label" id="detect-label">${t.detectedLabel}</p>
-        <h2>${detectedName}</h2>
-        <p class="badge">${badge}</p>
+        <p class="label" id="detect-label">${t.selectedLabel}</p>
+        <h2>${copy.name}</h2>
+        <p class="badge">${t.detectedLabel}: ${detectedName} · ${badge}</p>
         ${detectionNote ? `<p class="warn">${detectionNote}</p>` : ""}
       </div>
       <div class="cta-block">

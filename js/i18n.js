@@ -9,6 +9,7 @@ export const STRINGS = {
     heroTitle: "從官方管道下載 Grok Bot",
     heroLead:
       "這不是 xAI 官網。這裡幫你辨識裝置、核對資格，然後把你送到 x.ai、App Store 或 Google Play 的官方頁面。本站不托管任何安裝檔。",
+    selectedLabel: "目前選擇",
     detectedLabel: "偵測到的裝置",
     detectedUnknown: "無法自動判斷裝置，請手動選一個平台。",
     ipadNote:
@@ -175,6 +176,7 @@ export const STRINGS = {
     heroTitle: "Download Grok Bot from the official sources",
     heroLead:
       "This is not the xAI website. It detects your device, checks plan eligibility, then sends you to x.ai, the App Store, or Google Play. No installers are hosted here.",
+    selectedLabel: "Selected",
     detectedLabel: "Detected device",
     detectedUnknown: "Could not detect a device. Pick a platform below.",
     ipadNote:
