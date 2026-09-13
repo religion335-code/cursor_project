@@ -1,0 +1,11 @@
+{
+  "name": "grok-bot-download-guide",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Unofficial Grok Bot download guide that only links to official xAI, App Store, and Google Play pages.",
+  "scripts": {
+    "test": "node --test tests/platforms.test.js",
+    "start": "python3 -m http.server 4173"
+  }
+}
