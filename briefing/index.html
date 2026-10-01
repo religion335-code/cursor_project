@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>2026/10/01 SDA 1L 充填測試 — 問題與根因</title>
+<style>
+  :root {
+    --ink: #1c1915;
+    --muted: #5e584f;
+    --line: #e3dcd0;
+    --paper: #f7f4ee;
+    --white: #fffcf7;
+    --navy: #1b2a3d;
+    --navy-2: #24384f;
+    --issue: #9a3b12;
+    --issue-bg: #fff1e8;
+    --cause: #1e4d78;
+    --cause-bg: #eef4f8;
+    --ok: #0e6b45;
+    --ok-bg: #e7f5ee;
+    --warn: #8a5a00;
+    --warn-bg: #fff6df;
+    --mark: #c4552a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #12171e; color: var(--ink);
+    font-family: "WenQuanYi Micro Hei", "Noto Sans CJK TC", "Microsoft JhengHei", "PingFang TC", sans-serif; }
+  button, .nav-title { font-family: inherit; }
+  #viewport { height: calc(100vh - 58px); display: grid; place-items: center; }
+  #fit { position: relative; }
+  #stage { width: 1600px; height: 900px; transform-origin: top left; position: relative; }
+  .slide { position: absolute; inset: 0; display: none; overflow: hidden; background: var(--paper); }
+  .slide.on { display: flex; flex-direction: column; }
+  .pad { padding: 36px 48px 28px; height: 100%; display: flex; flex-direction: column; }
+  h1, h2, h3, p { margin: 0; }
+  .kicker { letter-spacing: .14em; text-transform: uppercase; font-size: 13px; color: var(--muted); font-weight: 700; }
+  h2.st { font-size: 32px; line-height: 1.25; letter-spacing: -.01em; margin: 6px 0 8px; }
+  .sub { color: var(--muted); font-size: 16px; line-height: 1.45; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; min-height: 0; flex: 1; }
+  .col { border-radius: 14px; padding: 16px 18px 14px; min-height: 0; }
+  .col.issue { background: var(--issue-bg); border-top: 5px solid var(--issue); }
+  .col.cause { background: var(--cause-bg); border-top: 5px solid var(--cause); }
+  .col h3 { font-size: 14px; letter-spacing: .12em; margin-bottom: 8px; }
+  .col.issue h3 { color: var(--issue); }
+  .col.cause h3 { color: var(--cause); }
+  .col p, .col li { font-size: 16.5px; line-height: 1.45; }
+  .col ul { margin: 6px 0 0; padding-left: 1.15em; }
+  .col li + li { margin-top: 5px; }
+  .tag { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .04em; border-radius: 999px; padding: 2px 8px; margin-right: 4px; vertical-align: 1px; }
+  .tag.see { background: #dceee4; color: var(--ok); }
+  .tag.inf { background: #e4eef6; color: var(--cause); }
+  .tag.gap { background: var(--warn-bg); color: var(--warn); }
+  .tag.done { background: var(--ok-bg); color: var(--ok); }
+
+  /* cover */
+  .cover { background: var(--navy); color: #f4efe6; flex-direction: row !important; }
+  .cover .left { width: 860px; padding: 64px 56px; display: flex; flex-direction: column; }
+  .cover .kicker { color: #d7b48a; }
+  .cover h1 { font-size: 58px; line-height: 1.12; margin: 18px 0 14px; font-weight: 700; }
+  .cover .lead { font-size: 22px; line-height: 1.45; color: #e6dfd2; max-width: 720px; }
+  .cover .meta { margin-top: auto; display: flex; gap: 28px; font-size: 15px; color: #c9c1b4; }
+  .cover .meta b { display: block; color: #fff; font-size: 18px; font-weight: 650; margin-bottom: 2px; }
+  .cover .right { flex: 1; position: relative; overflow: hidden; }
+  .cover .right img { width: 100%; height: 100%; object-fit: cover; filter: saturate(.85); }
+  .cover .cap { position: absolute; left: 16px; bottom: 16px; background: rgba(18,23,30,.72); color: #fff; font-size: 13px; padding: 6px 10px; border-radius: 8px; }
+
+  .call { background: var(--navy); color: #f7f3ea; border-radius: 14px; padding: 14px 18px; font-size: 18px; line-height: 1.45; margin: 8px 0 14px; }
+  .call b { color: #f0c48a; }
+
+  table.rca { width: 100%; border-collapse: separate; border-spacing: 0 8px; font-size: 15px; line-height: 1.4; }
+  table.rca th { text-align: left; font-size: 12px; letter-spacing: .14em; color: var(--muted); padding: 0 12px 2px; font-weight: 700; }
+  table.rca td { vertical-align: top; padding: 10px 12px; }
+  table.rca tr td:nth-child(1) { width: 42px; font-weight: 800; color: var(--white); background: var(--navy); border-radius: 10px 0 0 10px; text-align: center; font-size: 18px; }
+  table.rca tr td:nth-child(2) { background: var(--issue-bg); width: 46%; }
+  table.rca tr td:nth-child(3) { background: var(--cause-bg); border-radius: 0 10px 10px 0; }
+  table.rca .h { font-weight: 750; display: block; margin-bottom: 3px; }
+  table.rca td:nth-child(2) .h { color: var(--issue); }
+  table.rca td:nth-child(3) .h { color: var(--cause); }
+
+  .chain { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 8px; }
+  .chain .step { background: var(--white); border: 1px solid var(--line); border-radius: 12px; padding: 12px 12px 10px; position: relative; }
+  .chain .step .n { font-size: 12px; font-weight: 800; color: var(--mark); letter-spacing: .08em; }
+  .chain .step strong { display: block; font-size: 16px; margin: 4px 0 4px; }
+  .chain .step p { font-size: 13.5px; color: var(--muted); line-height: 1.4; }
+  .arrow-row { display: flex; justify-content: space-around; color: var(--mark); font-size: 20px; margin: -2px 0 2px; }
+
+  .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 8px 0; }
+  .stat { background: var(--white); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+  .stat b { display: block; font-size: 22px; letter-spacing: -.02em; }
+  .stat span { font-size: 12px; color: var(--muted); }
+
+  .media-row { display: grid; grid-template-columns: 280px 1fr; gap: 16px; min-height: 0; flex: 1; }
+  .phone { background: #111; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; }
+  .phone video, .phone img { width: 100%; height: 520px; object-fit: cover; background: #111; display: block; }
+  .phone .phcap { color: #efe8dc; font-size: 12px; padding: 8px 10px 10px; line-height: 1.35; }
+  .shot { width: 100%; border-radius: 12px; display: block; object-fit: cover; }
+  .note { font-size: 13px; color: var(--muted); line-height: 1.4; margin-top: 6px; }
+  .split3 { display: grid; grid-template-columns: 1.15fr .85fr; gap: 16px; min-height: 0; flex: 1; }
+  .pics { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .pics figure { margin: 0; }
+  .pics img { width: 100%; height: 250px; object-fit: cover; border-radius: 10px; background: #ddd; }
+  .pics figcaption, .cap2 { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.35; }
+
+  .grid50 { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; }
+  .cell { background: var(--white); border-radius: 6px; padding: 4px 4px 3px; text-align: center; border: 1px solid var(--line); }
+  .cell .i { display: block; font-size: 10px; color: #8a8175; }
+  .cell .v { font-size: 14px; font-weight: 700; }
+  .cell.hi { background: #fde2d4; border-color: #e7b39a; }
+  .cell.lo { background: #e7f0f8; border-color: #b9cfe0; }
+  .legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin: 6px 0 8px; }
+  .sw { width: 10px; height: 10px; display: inline-block; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; flex: 1; }
+  .card { background: var(--white); border-radius: 14px; border: 1px solid var(--line); padding: 14px 16px; }
+  .card h3 { font-size: 16px; margin-bottom: 8px; }
+  .card li { font-size: 15px; line-height: 1.42; margin: 5px 0; }
+  .card ol, .card ul { margin: 0; padding-left: 1.2em; }
+  .okh { color: var(--ok); }
+  .nh { color: var(--issue); }
+
+  .twoenv { display: grid; grid-template-columns: 340px 1fr 1fr; gap: 14px; flex: 1; min-height: 0; }
+  .twoenv img { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; max-height: 640px; }
+  .pass { background: var(--ok-bg); border-radius: 14px; padding: 16px 16px 12px; }
+  .pass h3 { color: var(--ok); font-size: 15px; letter-spacing: .08em; margin-bottom: 8px; }
+  .pass li { font-size: 16px; line-height: 1.45; margin: 6px 0; }
+  .bigv { font-size: 28px; font-weight: 750; }
+
+  .foot { margin-top: auto; display: flex; justify-content: space-between; color: #8d867b; font-size: 12px; padding-top: 8px; }
+
+  #bar { height: 58px; display: flex; align-items: center; gap: 10px; padding: 0 16px; color: #efe8dc; background: #0c1016; }
+  #bar button { background: #243140; color: #fff; border: 0; border-radius: 8px; padding: 8px 14px; font-size: 14px; cursor: pointer; }
+  #bar button:hover { background: #31445c; }
+  .nav-title { flex: 1; font-size: 14px; color: #d9d0c3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #count { font-variant-numeric: tabular-nums; color: #f0c48a; font-weight: 700; }
+  .dots { display: flex; gap: 5px; }
+  .dots i { width: 7px; height: 7px; border-radius: 99px; background: #3a4654; display: block; }
+  .dots i.on { background: #f0c48a; }
+</style>
+</head>
+<body>
+<div id="viewport">
+  <div id="fit">
+    <div id="stage">
+
+      <section class="slide cover on">
+        <div class="left">
+          <div class="kicker">Filling test · Issue / Root cause</div>
+          <h1>SDA 1 L 充填測試<br>第一輪 50 袋</h1>
+          <p class="lead">2026/10/01。四個現象是同一件事：有結塊的粉沒有乾淨離開秤斗，所以閘門會堵、壁上會沾，Ishida 秤到的重量沒有全部進袋。</p>
+          <div class="meta">
+            <div><b>名義重量</b>200 g / 袋</div>
+            <div><b>現場時段</b>09:28 – 11:57</div>
+            <div><b>已排除</b>負荷元、室溫室濕</div>
+          </div>
+        </div>
+        <div class="right">
+          <img src="media/line.jpg" alt="SDA 充填線，作業員在隔離手套箱前" />
+          <div class="cap">充填線 · 2026/10/01 09:28</div>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="pad">
+          <div class="kicker">先排除什麼</div>
+          <h2 class="st">測試前，秤與環境都是合格的</h2>
+          <p class="sub">這兩個結果把根因從「儀器」和「房間」移開。後面的重量差要到粉體路徑上去找。</p>
+          <div class="twoenv" style="margin-top:16px">
+            <img src="media/hobo.jpg" alt="HOBO MX 溫濕度記錄器，20.67°C，31.6% RH" />
+            <div class="pass">
+              <h3>環境 · 規格內</h3>
+              <p class="bigv">20.67°C<br>31.6% RH</p>
+              <ul>
+                <li>溫度規格 19–27°C，讀值在中間。</li>
+                <li>濕度規格 30–40% RH。31.6% 合格，但距下限只有 1.6 個百分點，屬於偏乾的一側。</li>
+                <li>記錄器正在 MEMORY / LOGGING，這是記錄值，不是單次瞄一眼。</li>
+                <li>室濕沒有超規，不能把沾料解釋成「房間太濕」。</li>
+              </ul>
+            </div>
+            <div class="pass">
+              <h3>Ishida · 測試前合格</h3>
+              <p class="bigv">Unit 5<br>600 g 校正</p>
+              <ul>
+                <li>重量確認 200 g、400 g、600 g，結果合格。</li>
+                <li>200 g 這一點就是這一輪的名義袋重，靜態砝碼過得了。</li>
+                <li>所以前三袋和 MT 對不上，不是這一顆負荷元沒校正。</li>
+                <li>校正對的是砝碼。結塊、沾壁、落料不完整，砝碼測不到。</li>
+              </ul>
+            </div>
+          </div>
+          <div class="foot"><span>SDA 1L · 2026/10/01</span><span>02</span></div>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="pad">
+          <div class="kicker">總覽</div>
+          <h2 class="st">左：問題　　右：根因</h2>
+          <table class="rca">
+            <thead>
+              <tr><th></th><th>ISSUE</th><th>ROOT CAUSE</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td><span class="h">前三袋，Ishida 與 MT 重量不一致</span>Ishida 明細是 203.4、200.9、201.1 g。第 1 袋比 200 g 重 3.4 g，是 50 袋裡唯一超過 +2 g 的點。第 2、第 3 袋已回到這一批的正常帶。</td>
+                <td><span class="h">秤斗裡的粉沒有全部進袋</span>結塊與沾壁讓 Ishida 已經扣掉的重量，和 MT 秤到的袋重之間差一塊殘留。第 1 袋另外帶了啟動時一次掉下的殘料。負荷元測試前合格。MT 的三筆讀值這包資料裡沒有，兩機的差值還算不出來。</td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td><span class="h">SDA 結塊堵在 cut gate</span>現場處置是把振動時間加長。影片沒有拍到閘門卡住的瞬間，拍到的是閘門上游的秤斗裡已經有硬塊。</td>
+                <td><span class="h">硬塊在閘口搭橋，原振動時間不夠</span>原料裡的塊不容易過閘，細粉又黏，塊一座住，粉就在開口上搭橋。加長振動可以把這一輪的橋震開，但不會把原料裡的塊清掉。</td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td><span class="h">粉沾在 cut gate 與 weight hopper</span>11:57 拆下的落料槽，上半仍是鏡面，中線以下是一整片霧面膜，角落最厚。進料護網的右側網緣也結了一圈粉。</td>
+                <td><span class="h">黏性細粉被硬塊抹在不鏽鋼上</span>膜一旦形成，下一劑黏的是那層膜，不是乾淨金屬。通道上沒有看到敲擊或氣刀。室濕在規格內且偏乾，這張照片是乾膜，不是房間結露。</td>
+              </tr>
+              <tr>
+                <td>4</td>
+                <td><span class="h">原料有結塊</span>測試前已完成 Unit 5 / 600 g 校正，以及 200、400、600 g 確認，結果合格。結塊是在這個合格結果之後、粉一進秤斗就看見的。</td>
+                <td><span class="h">結塊是原料帶進來的，問題從這裡開始</span>硬塊停在秤斗粉面的上方，還沒有到 cut gate。它是問題 1 到 3 的共同起點：塊去堵閘，碎塊去抹壁，殘留去造成兩台秤不一樣。</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="foot"><span>名義目標 200 g · 明細見第 6、9 頁</span><span>03</span></div>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="pad">
+          <div class="kicker">一條鏈</div>
+          <h2 class="st">四個問題怎麼串在一起</h2>
+          <p class="sub">校正與環境停在鏈的外面。它們合格，所以沒有放進這五步。</p>
+          <div class="chain" style="margin-top:22px">
+            <div class="step"><div class="n">01 · 原料</div><strong>秤斗裡就有硬塊</strong><p>影片 WA0006。塊在粉面上，形狀完整，不是閘門切出來的。</p></div>
+            <div class="step"><div class="n">02 · 閘門</div><strong>塊在 cut gate 搭橋</strong><p>現場紀錄。原振動時間打不開這座橋。</p></div>
+            <div class="step"><div class="n">03 · 處置</div><strong>振動時間加長</strong><p>能把橋震開。同時會把黏粉再抹上一層，也不能取代過篩。</p></div>
+            <div class="step"><div class="n">04 · 沾料</div><strong>閘門與秤斗留膜</strong><p>11:57 落料槽下半段，以及護網網緣。留下的就是沒進袋的那一塊重量。</p></div>
+            <div class="step"><div class="n">05 · 袋重</div><strong>Ishida ≠ MT</strong><p>第 1 袋 203.4 g 是啟動殘料。其後 49 袋收斂到 200.98 g。</p></div>
+          </div>
+          <div class="call" style="margin-top:14px">負荷元回答的是「斗裡現在有多重」。MT 回答的是「袋裡最後有多重」。中間只要有粉留在閘門或斗壁，兩個數字就會分開。這一輪的照片和影片說明，中間確實有東西留下。</div>
+          <div class="pics" style="margin-top:12px; grid-template-columns: 1fr 1fr 1fr;">
+            <figure>
+              <img src="media/lumps.jpg" alt="秤斗粉面上的硬塊" style="height:250px" />
+              <figcaption>01 秤斗粉面上的硬塊。影片在第 7 頁。</figcaption>
+            </figure>
+            <figure>
+              <img src="media/grate-close.jpg" alt="護網網緣結粉" style="height:250px" />
+              <figcaption>04 護網單側結粉。影片在第 8 頁。</figcaption>
+            </figure>
+            <figure>
+              <img src="media/chute.jpg" alt="落料槽下半段的粉膜" style="height:250px" />
+              <figcaption>04 落料槽上半仍亮，下半是膜。11:57。</figcaption>
+            </figure>
+          </div>
+          <div class="foot"><span>已做的處置只覆蓋第 03 步</span><span>04</span></div>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="pad">
+          <div class="kicker">Issue 1 · 重量</div>
+          <h2 class="st">前三袋對不上，離群的是第 1 袋</h2>
+          <div class="stats">
+            <div class="stat"><b>203.4 g</b><span>第 1 袋 · 比目標 +3.4 g</span></div>
+            <div class="stat"><b>200.9 / 201.1</b><span>第 2、第 3 袋，已回到群體</span></div>
+            <div class="stat"><b>201.03 g</b><span>50 袋平均 · 標準差 0.60 g</span></div>
+            <div class="stat"><b>200.98 g</b><span>去掉第 1 袋 · 標準差 0.50 g</span></div>
+            <div class="stat"><b>49 / 50</b><span>落在 200 ± 2 g 以內</span></div>
+          </div>
+          <div class="cols" style="margin-top:8px">
+            <div class="col issue">
+              <h3>ISSUE</h3>
+              <ul>
+                <li>前三袋用 Ishida 與 MT 各秤一次，兩邊數字不一樣。</li>
+                <li>Ishida 這一側：203.4、200.9、201.1 g。前三袋平均 201.80 g；第 4 到第 50 袋平均 200.98 g。差距幾乎全部來自第 1 袋。</li>
+                <li>全距 4.0 g（199.4–203.4）。低於 200 g 的只有第 5 袋 199.8 g、第 6 袋 199.4 g。</li>
+                <li>畫面上的 Average、S.D.、MAX、MIN、Range 都是 0。那一欄沒有計算，不能拿來當結果。下一頁的表是依 50 筆明細重算的。</li>
+                <li>T.Weight 11.2 kg、T.Count 56。50 袋合計只有 10.052 kg。多出的 6 次沒有袋號。</li>
+              </ul>
+              <p class="note">畫面 CLR 10:44，機器時間 11:38，照片時間 11:27。書面公差這包資料沒有提供，所以這裡只描述對 200 g 的分布，不另下合格判定。</p>
+            </div>
+            <div class="col cause">
+              <h3>ROOT CAUSE</h3>
+              <p><span class="tag see">看見了</span>第 1 袋明顯偏重；落料槽與護網有殘留；秤斗粉面有硬塊。</p>
+              <p style="margin-top:8px"><span class="tag inf">推論</span>Ishida 在放料前就把斗內重量算進這一袋。粉若黏在 cut gate 或斗壁，MT 秤到的袋重就少掉那一塊；下一袋若把殘料一起抖下來，就變成多。第 1 袋 +3.4 g 符合「啟動時積住的料一次掉下」。</p>
+              <p style="margin-top:8px"><span class="tag inf">推論</span>第 2、第 3 袋若 MT 仍然對不上，比較像固定偏差：空袋皮重不一致，或每一袋都留下一層薄膜。那是和啟動殘料分開的第二個因素。</p>
+              <p style="margin-top:8px"><span class="tag gap">還缺</span>MT 三筆讀值、空袋皮重、兩台秤是不是秤同一袋。沒有這三項，差值的克數不能寫死。</p>
+              <p style="margin-top:8px"><span class="tag see">排除</span>Unit 5 在 600 g 校正過，200 / 400 / 600 g 確認合格。這一顆負荷元不是根因。</p>
+            </div>
+          </div>
+          <div class="foot"><span>明細與曲線在下一頁</span><span>05</span></div>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="pad">
+          <div class="kicker">Issue 1 · 50 袋明細</div>
+          <h2 class="st">啟動一袋偏高，之後貼著 201 g</h2>
+          <svg id="chart" viewBox="0 0 820 250" width="1504" height="250" style="margin-top:4px"></svg>
+          <div class="legend">
+            <span><i class="sw" style="background:#fde2d4"></i>高於 201.5 g，含第 1 袋 203.4</span>
+            <span><i class="sw" style="background:#e7f0f8"></i>低於 200.0 g，只有第 5、第 6 袋</span>
+            <span>橘線是 200 g 目標。相對 200 g：±1 g 有 31 袋（62%），±2 g 有 49 袋（98%）。</span>
+          </div>
+          <div class="grid50" id="grid50"></div>
+          <div class="foot"><span>來源：Ishida「3 Log 1 window」，50 筆皆可在照片上讀到。統計欄為 0，未採用。</span><span>06</span></div>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="pad">
+          <div class="kicker">Issue 2 · Cut gate</div>
+          <h2 class="st">結塊堵閘。振動加長是臨時處置，不是根因對策</h2>
+          <div class="cols" style="margin-top:12px">
+            <div class="col issue" style="display:grid; grid-template-columns: 250px 1fr; gap: 12px;">
+              <div class="phone">
+                <video src="media/lumps.mp4" poster="media/lumps.jpg" controls playsinline preload="metadata"></video>
+                <div class="phcap">影片 · 秤斗粉面上的硬塊，約 6 秒。機器當時是停的。</div>
+              </div>
+              <div>
+                <h3>ISSUE</h3>
+                <ul>
+                  <li>SDA 結塊堵在 cut gate。</li>
+                  <li>現場已把振動時間加長，用來把堵住的料送出去。</li>
+                  <li>這支影片看得到硬塊停在細粉上面，塊的邊緣清楚，沒有跟著細粉攤平。</li>
+                  <li>影片裡閘門沒有在動作，所以「卡住的那一下」是現場紀錄，不是這支影片的畫面。</li>
+                </ul>
+              </div>
+            </div>
+            <div class="col cause">
+              <h3>ROOT CAUSE</h3>
+              <ul>
+                <li><span class="tag see">看見了</span>硬塊在進閘之前就在秤斗裡。塊比周圍的粉粗一個等級，開口不大時會先坐住。</li>
+                <li><span class="tag inf">推論</span>細粉有黏性，會填進塊和閘口的縫，搭成一座橋。橋一成，後面的料下不來，閘也關不乾淨。</li>
+                <li><span class="tag inf">推論</span>原來的振動時間短於「把這一批的橋震開」所需要的時間。加長之後橋會垮，這就是現場看得到的改善。</li>
+                <li><span class="tag gap">限度</span>振動時間加長不減少原料裡的塊。時間加太長，斗裡的料會被多送、黏粉會被再抹開，袋重的分散可能變大。11:27 的 50 筆紀錄，照片上看不出是改參數之前還是之後。</li>
+              </ul>
+              <p class="note">改完之後要另跑一輪，用明細重算平均和標準差，確認第 1 袋不再是 203.4 g。</p>
+            </div>
+          </div>
+          <div class="foot"><span>影片 VID-20261001-WA0006</span><span>07</span></div>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="pad">
+          <div class="kicker">Issue 3 · 沾料</div>
+          <h2 class="st">粉黏在落料路徑上，留下的就是袋重差</h2>
+          <div class="split3" style="margin-top:12px">
+            <div class="col issue">
+              <h3>ISSUE</h3>
+              <div class="pics">
+                <figure>
+                  <img src="media/chute.jpg" alt="拆下的不鏽鋼落料槽，下半段有霧面殘留" style="height:390px" />
+                  <figcaption>11:57 拆下的落料槽。上半鏡面，中線以下霧面膜，角落較厚。</figcaption>
+                </figure>
+                <figure>
+                  <video src="media/grate.mp4" poster="media/grate-close.jpg" controls playsinline preload="metadata" style="width:100%; height:390px; object-fit:cover; border-radius:10px; background:#111; display:block"></video>
+                  <figcaption>進料護網，約 10 秒，按播放。粉結在右側網緣，不是均勻的一層灰。約第 3 秒有一句聽起來像「下料」，背景很吵。</figcaption>
+                </figure>
+              </div>
+              <p style="margin-top:8px">沾的位置有兩處：cut gate 下游的落料槽，以及更上游的護網。秤斗壁在結塊影片裡大部分仍亮，厚膜主要在落料路徑，不在斗的上壁。</p>
+            </div>
+            <div class="col cause">
+              <h3>ROOT CAUSE</h3>
+              <ul>
+                <li><span class="tag see">看見了</span>殘留是抹上去的膜。落料槽上半還沒有膜、下半已經整片發霧，代表粉是沿著流動的下半段被抹開，不是整槽均勻受潮。</li>
+                <li><span class="tag inf">推論</span>硬塊通過閘口時被擠碎，把黏的細粉塗在金屬上。膜形成之後，新的粉黏著膜，殘留會越積越厚。</li>
+                <li><span class="tag see">看見了</span>護網只在一側結粉。料在那一側停過，不是整個網面都在正常過粉。</li>
+                <li><span class="tag inf">排除</span>HOBO 31.6% RH，在 30–40% 內，而且偏乾。這張 11:57 的槽壁沒有水珠。房間濕度不是這層膜的原因。</li>
+                <li><span class="tag gap">還要查</span>原料本身的水分，以及清潔後槽是不是完全乾的。照片不能區分「料黏」和「洗完没乾」。下半段的細點兩種都像，要在下一輪清潔後、進料前先拍一張空槽。</li>
+              </ul>
+              <p class="note" style="margin-top:10px">這層膜就是 Issue 1 的機制：斗裡秤到的克數，有一部分沒有跟著進袋。</p>
+            </div>
+          </div>
+          <div class="foot"><span>落料槽 11:57 · 護網影片 VID-20261001-WA0004</span><span>08</span></div>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="pad">
+          <div class="kicker">Issue 4 · 原料</div>
+          <h2 class="st">結塊在秤斗裡就看見了。校正合格，所以原因在料</h2>
+          <div class="cols" style="margin-top:12px">
+            <div class="col issue" style="display:grid; grid-template-columns: 250px 1fr; gap:12px">
+              <div>
+                <img src="media/lumps.jpg" alt="秤斗粉面上的立方硬塊" style="width:250px; height:500px; object-fit:cover; border-radius:16px; display:block" />
+                <p class="note">硬塊近景。整段影片在第 7 頁，機器當時是停的。</p>
+              </div>
+              <div>
+                <h3>ISSUE</h3>
+                <ul>
+                  <li>原料有結塊。硬塊是立方和片狀，停在細粉錐的上面，沒有陷進去。</li>
+                  <li>這是進 cut gate 之前的狀態。塊不是閘門製造出來的。</li>
+                  <li>同一天、測試開始前，Ishida 已經做完兩件事，結果都合格：Unit 5 以 600 g 校正；200 g、400 g、600 g 重量確認。</li>
+                </ul>
+              </div>
+            </div>
+            <div class="col cause">
+              <h3>ROOT CAUSE</h3>
+              <ul>
+                <li><span class="tag see">看見了</span>結塊進系統時就是塊。秤斗沒有把它們打碎。護網上是黏住的細粉，沒有看到網子把這些硬塊擋下來。</li>
+                <li><span class="tag see">看見了</span>靜態砝碼在 200、400、600 g 都合格。同一台秤，砝碼過、實粉不過，差在粉的流動，不在負荷元。</li>
+                <li><span class="tag inf">推論</span>這一批原料沒有在進 Ishida 之前過篩或碎塊。振動時間是在閘門已經堵住之後才加的，屬於下游補救。</li>
+                <li><span class="tag inf">共同原因</span>問題 1、2、3 都從這裡出去。塊堵閘、碎塊抹壁、殘留造成 Ishida 和 MT 不一致。</li>
+              </ul>
+              <p class="note">校正合格這件事要寫進紀錄。它保護了儀器，也把下一輪的行動指到原料準備，而不是再校一次秤。</p>
+            </div>
+          </div>
+          <div class="foot"><span>校正為現場紀錄 · 結塊為影片 WA0006</span><span>09</span></div>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="pad">
+          <div class="kicker">下一步</div>
+          <h2 class="st">已經做的，和還沒有堵住根因的</h2>
+          <div class="cards" style="margin-top:14px">
+            <div class="card">
+              <h3 class="okh">這一輪已經做了</h3>
+              <ul>
+                <li>Unit 5 以 600 g 校正，200 / 400 / 600 g 確認合格。這一步把負荷元排除了。</li>
+                <li>Cut gate 被結塊堵住之後，振動時間已加長。這一步讓料可以再走，屬於臨時處置。</li>
+                <li>環境有記錄：20.67°C、31.6% RH，在規格內。</li>
+                <li>50 袋的 Ishida 明細有留下。畫面統計欄是 0，以後以明細為準。</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3 class="nh">下一輪開始前要補上</h3>
+              <ol>
+                <li>原料進斗前過篩或碎塊。振動時間取代不了這一步。</li>
+                <li>清潔後、進料前，先拍一張空的落料槽和秤斗。10 袋後再拆一次，看膜是否回來。</li>
+                <li>同一袋同時記 Ishida 與 MT，寫下空袋皮重，至少前 10 袋。現在只有 Ishida。</li>
+                <li>改完振動時間後重跑，重算平均與標準差，確認沒有再出現 203.4 g 這種啟動袋。</li>
+                <li>把 T.Count 56 和 50 袋對上，寫明多出的 6 次是試投、空打，還是報廢。</li>
+                <li>批記錄加上結塊狀況與原料水分。室溫室濕繼續記，但它們不是這一輪的原因。</li>
+              </ol>
+            </div>
+          </div>
+          <div class="call" style="margin-top:14px">下一輪只看兩件事：第 1 袋不再離群；同一袋扣掉空袋皮重之後，Ishida 和 MT 的差，要對得上閘門上留下的那一層粉。</div>
+          <div class="foot"><span>臨時處置 ≠ 根因已關閉</span><span>10</span></div>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="pad">
+          <div class="kicker">證據與界限</div>
+          <h2 class="st">這份簡報用了什麼、沒有用什麼</h2>
+          <div class="cols" style="margin-top:12px">
+            <div class="col issue">
+              <h3>用了的證據</h3>
+              <ul>
+                <li>充填線照片，2026/10/01 09:28。</li>
+                <li>HOBO MX temp/RH：20.67°C、31.6% RH。標示規格溫度 19–27°C、濕度 30–40%。</li>
+                <li>Ishida「3 Log 1 window」：袋號 1–50 的重量，T.Weight 11.2 kg，T.Count 56，CLR 10:44，機器時間 11:38。照片時間 11:27。統計欄全為 0，已改以 50 筆重算。</li>
+                <li>落料槽內壁，11:57。</li>
+                <li>影片 WA0006，6 秒，秤斗內結塊。</li>
+                <li>影片 WA0004，10 秒，護網結粉。約第 3 秒有一句聽起來像「下料」，背景很吵，不當成正式紀錄。</li>
+                <li>現場口述：前三袋兩秤不一致；結塊堵 cut gate 後加長振動；粉沾 cut gate 與秤斗；測試前校正與三點重量確認合格。</li>
+              </ul>
+            </div>
+            <div class="col cause">
+              <h3>故意沒有寫死的部分</h3>
+              <ul>
+                <li>MT 的三筆克數。照片和影片都沒有。兩機相差幾克，這份簡報不猜。</li>
+                <li>振動時間改前、改後的秒數，以及 11:27 的 50 筆是改前還是改後。</li>
+                <li>袋重的書面公差。沒有規格就不能把 201.03 g 判成合格或不合格。分布只對 200 g 名義值。</li>
+                <li>T.Count 56 比 50 袋多出的 6 次是什麼。</li>
+                <li>落料槽下半的細點是粉還是清潔水跡。需要一張進料前的空槽照片。</li>
+                <li>兩支影片都是停機狀態，沒有拍到閘門堵住的動作，也沒有拍到振動加長之後的落料。</li>
+              </ul>
+              <p class="note">50 袋合計 10,051.6 g。平均 201.032 g，樣本標準差 0.600 g，中位數 200.95 g，最小 199.4 g（第 6 袋），最大 203.4 g（第 1 袋）。</p>
+            </div>
+          </div>
+          <div class="foot"><span>2026/10/01 SDA 1 L 第一輪 · 問題與根因</span><span>11</span></div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+<div id="bar">
+  <button type="button" id="prev">上一頁</button>
+  <button type="button" id="next">下一頁</button>
+  <div class="dots" id="dots"></div>
+  <div class="nav-title" id="title"></div>
+  <span id="count"></span>
+</div>
+<script>
+const W = [203.4,200.9,201.1,200.3,199.8,199.4,201.0,201.5,200.8,201.1,201.8,200.4,201.2,200.8,200.7,200.7,201.0,201.0,200.9,201.4,200.6,200.9,201.0,201.1,201.1,200.6,201.6,201.4,201.6,202.0,201.6,202.0,201.8,201.6,201.4,201.0,200.9,200.7,201.2,200.8,201.0,200.8,200.8,200.6,200.8,200.6,200.8,200.7,200.6,200.8];
+const titles = ["封面","測試前已排除的項目","四個問題與根因","因果怎麼串起來","前三袋重量","50 袋明細","結塊堵住 cut gate","粉沾在閘門與秤斗","原料結塊與校正","已做與下一步","證據與界限"];
+const slides = [...document.querySelectorAll(".slide")];
+let i = 0;
+const dots = document.getElementById("dots");
+slides.forEach((_, n) => {
+  const d = document.createElement("i");
+  d.onclick = () => go(n);
+  dots.appendChild(d);
+});
+function go(n) {
+  i = (n + slides.length) % slides.length;
+  slides.forEach((s, k) => s.classList.toggle("on", k === i));
+  [...dots.children].forEach((d, k) => d.classList.toggle("on", k === i));
+  document.getElementById("title").textContent = titles[i];
+  document.getElementById("count").textContent = (i + 1) + " / " + slides.length;
+  location.hash = String(i + 1);
+}
+document.getElementById("prev").onclick = () => go(i - 1);
+document.getElementById("next").onclick = () => go(i + 1);
+document.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowRight" || e.key === "PageDown" || e.key === " ") { e.preventDefault(); go(i + 1); }
+  if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); go(i - 1); }
+  if (e.key === "Home") go(0);
+  if (e.key === "End") go(slides.length - 1);
+});
+function fit() {
+  const s = Math.min(innerWidth / 1600, (innerHeight - 58) / 900);
+  const fit = document.getElementById("fit");
+  fit.style.width = (1600 * s) + "px";
+  fit.style.height = (900 * s) + "px";
+  document.getElementById("stage").style.transform = "scale(" + s + ")";
+}
+addEventListener("resize", fit);
+
+function draw() {
+  const svg = document.getElementById("chart");
+  const ymin = 198.6, ymax = 204.0, L = 44, T = 16, R = 12, B = 28, Wd = 820, H = 250;
+  const pw = Wd - L - R, ph = H - T - B;
+  const X = (k) => L + k * (pw / 49);
+  const Y = (v) => T + (ymax - v) / (ymax - ymin) * ph;
+  const ns = "http://www.w3.org/2000/svg";
+  const el = (name, attrs) => { const n = document.createElementNS(ns, name); for (const k in attrs) n.setAttribute(k, attrs[k]); return n; };
+  svg.appendChild(el("line", { x1: L, y1: Y(200), x2: Wd - R, y2: Y(200), stroke: "#c4552a", "stroke-width": 1.4 }));
+  svg.appendChild(el("line", { x1: L, y1: Y(201), x2: Wd - R, y2: Y(201), stroke: "#d9d0c3", "stroke-width": 1 }));
+  [199, 200, 201, 202, 203, 204].forEach((g) => {
+    svg.appendChild(el("text", { x: 4, y: Y(g) + 4, fill: "#8a8175", "font-size": 11 })).textContent = g;
+  });
+  const d = W.map((v, k) => (k ? "L" : "M") + X(k).toFixed(1) + "," + Y(v).toFixed(1)).join(" ");
+  svg.appendChild(el("path", { d, fill: "none", stroke: "#1e4d78", "stroke-width": 2 }));
+  W.forEach((v, k) => {
+    const hi = v > 201.5, lo = v < 200;
+    svg.appendChild(el("circle", { cx: X(k), cy: Y(v), r: hi || lo ? 4 : 2.4, fill: hi ? "#c4552a" : lo ? "#1e4d78" : "#1b2a3d" }));
+  });
+  svg.appendChild(el("text", { x: X(0) + 6, y: Y(203.4) - 6, fill: "#9a3b12", "font-size": 12, "font-weight": 700 })).textContent = "第1袋 203.4";
+  for (let t = 0; t < 50; t += 5) {
+    svg.appendChild(el("text", { x: X(t) - 4, y: 246, fill: "#8a8175", "font-size": 11 })).textContent = String(t + 1);
+  }
+  const grid = document.getElementById("grid50");
+  W.forEach((v, k) => {
+    const c = document.createElement("div");
+    c.className = "cell" + (v > 201.5 ? " hi" : v < 200 ? " lo" : "");
+    c.innerHTML = '<span class="i">' + (k + 1) + '</span><span class="v">' + v.toFixed(1) + "</span>";
+    grid.appendChild(c);
+  });
+}
+draw();
+fit();
+go(location.hash ? Math.max(0, parseInt(location.hash.slice(1), 10) - 1) : 0);
+</script>
+</body>
+</html>
