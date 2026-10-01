@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>2026/10/01 SDA 1 L filling test — issues and root causes</title>
+<style>
+  :root {
+    --ink: #1c1915;
+    --muted: #5e584f;
+    --line: #e3dcd0;
+    --paper: #f7f4ee;
+    --white: #fffcf7;
+    --navy: #1b2a3d;
+    --navy-2: #24384f;
+    --issue: #9a3b12;
+    --issue-bg: #fff1e8;
+    --cause: #1e4d78;
+    --cause-bg: #eef4f8;
+    --ok: #0e6b45;
+    --ok-bg: #e7f5ee;
+    --warn: #8a5a00;
+    --warn-bg: #fff6df;
+    --mark: #c4552a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #12171e; color: var(--ink);
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; }
+  button, .nav-title { font-family: inherit; }
+  #viewport { height: calc(100vh - 58px); display: grid; place-items: center; }
+  #fit { position: relative; }
+  #stage { width: 1600px; height: 900px; transform-origin: top left; position: relative; }
+  .slide { position: absolute; inset: 0; display: none; overflow: hidden; background: var(--paper); }
+  .slide.on { display: flex; flex-direction: column; }
+  .pad { padding: 36px 48px 28px; height: 100%; display: flex; flex-direction: column; }
+  h1, h2, h3, p { margin: 0; }
+  .kicker { letter-spacing: .14em; text-transform: uppercase; font-size: 13px; color: var(--muted); font-weight: 700; }
+  h2.st { font-size: 32px; line-height: 1.25; letter-spacing: -.01em; margin: 6px 0 8px; }
+  .sub { color: var(--muted); font-size: 16px; line-height: 1.45; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; min-height: 0; flex: 1; }
+  .col { border-radius: 14px; padding: 16px 18px 14px; min-height: 0; }
+  .col.issue { background: var(--issue-bg); border-top: 5px solid var(--issue); }
+  .col.cause { background: var(--cause-bg); border-top: 5px solid var(--cause); }
+  .col h3 { font-size: 14px; letter-spacing: .12em; margin-bottom: 8px; }
+  .col.issue h3 { color: var(--issue); }
+  .col.cause h3 { color: var(--cause); }
+  .col p, .col li { font-size: 15.5px; line-height: 1.4; }
+  .col ul { margin: 6px 0 0; padding-left: 1.15em; }
+  .col li + li { margin-top: 5px; }
+  .tag { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .04em; border-radius: 999px; padding: 2px 8px; margin-right: 4px; vertical-align: 1px; }
+  .tag.see { background: #dceee4; color: var(--ok); }
+  .tag.inf { background: #e4eef6; color: var(--cause); }
+  .tag.gap { background: var(--warn-bg); color: var(--warn); }
+  .tag.done { background: var(--ok-bg); color: var(--ok); }
+
+  /* cover */
+  .cover { background: var(--navy); color: #f4efe6; flex-direction: row !important; }
+  .cover .left { width: 860px; padding: 64px 56px; display: flex; flex-direction: column; }
+  .cover .kicker { color: #d7b48a; }
+  .cover h1 { font-size: 58px; line-height: 1.12; margin: 18px 0 14px; font-weight: 700; }
+  .cover .lead { font-size: 22px; line-height: 1.45; color: #e6dfd2; max-width: 720px; }
+  .cover .meta { margin-top: auto; display: flex; gap: 28px; font-size: 15px; color: #c9c1b4; }
+  .cover .meta b { display: block; color: #fff; font-size: 18px; font-weight: 650; margin-bottom: 2px; }
+  .cover .right { flex: 1; position: relative; overflow: hidden; }
+  .cover .right img { width: 100%; height: 100%; object-fit: cover; filter: saturate(.85); }
+  .cover .cap { position: absolute; left: 16px; bottom: 16px; background: rgba(18,23,30,.72); color: #fff; font-size: 13px; padding: 6px 10px; border-radius: 8px; }
+
+  .call { background: var(--navy); color: #f7f3ea; border-radius: 14px; padding: 14px 18px; font-size: 18px; line-height: 1.45; margin: 8px 0 14px; }
+  .call b { color: #f0c48a; }
+
+  table.rca { width: 100%; border-collapse: separate; border-spacing: 0 8px; font-size: 14px; line-height: 1.35; }
+  table.rca th { text-align: left; font-size: 12px; letter-spacing: .14em; color: var(--muted); padding: 0 12px 2px; font-weight: 700; }
+  table.rca td { vertical-align: top; padding: 10px 12px; }
+  table.rca tr td:nth-child(1) { width: 42px; font-weight: 800; color: var(--white); background: var(--navy); border-radius: 10px 0 0 10px; text-align: center; font-size: 18px; }
+  table.rca tr td:nth-child(2) { background: var(--issue-bg); width: 46%; }
+  table.rca tr td:nth-child(3) { background: var(--cause-bg); border-radius: 0 10px 10px 0; }
+  table.rca .h { font-weight: 750; display: block; margin-bottom: 3px; }
+  table.rca td:nth-child(2) .h { color: var(--issue); }
+  table.rca td:nth-child(3) .h { color: var(--cause); }
+
+  .chain { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 8px; }
+  .chain .step { background: var(--white); border: 1px solid var(--line); border-radius: 12px; padding: 12px 12px 10px; position: relative; }
+  .chain .step .n { font-size: 12px; font-weight: 800; color: var(--mark); letter-spacing: .08em; }
+  .chain .step strong { display: block; font-size: 16px; margin: 4px 0 4px; }
+  .chain .step p { font-size: 13.5px; color: var(--muted); line-height: 1.4; }
+  .arrow-row { display: flex; justify-content: space-around; color: var(--mark); font-size: 20px; margin: -2px 0 2px; }
+
+  .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 8px 0; }
+  .stat { background: var(--white); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+  .stat b { display: block; font-size: 22px; letter-spacing: -.02em; }
+  .stat span { font-size: 12px; color: var(--muted); }
+
+  .media-row { display: grid; grid-template-columns: 280px 1fr; gap: 16px; min-height: 0; flex: 1; }
+  .phone { background: #111; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; }
+  .phone video, .phone img { width: 100%; height: 520px; object-fit: cover; background: #111; display: block; }
+  .phone .phcap { color: #efe8dc; font-size: 12px; padding: 8px 10px 10px; line-height: 1.35; }
+  .shot { width: 100%; border-radius: 12px; display: block; object-fit: cover; }
+  .note { font-size: 13px; color: var(--muted); line-height: 1.4; margin-top: 6px; }
+  .split3 { display: grid; grid-template-columns: 1.15fr .85fr; gap: 16px; min-height: 0; flex: 1; }
+  .pics { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .pics figure { margin: 0; }
+  .pics img { width: 100%; height: 250px; object-fit: cover; border-radius: 10px; background: #ddd; }
+  .pics figcaption, .cap2 { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.35; }
+
+  .grid50 { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; }
+  .cell { background: var(--white); border-radius: 6px; padding: 4px 4px 3px; text-align: center; border: 1px solid var(--line); }
+  .cell .i { display: block; font-size: 10px; color: #8a8175; }
+  .cell .v { font-size: 14px; font-weight: 700; }
+  .cell.hi { background: #fde2d4; border-color: #e7b39a; }
+  .cell.lo { background: #e7f0f8; border-color: #b9cfe0; }
+  .legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin: 6px 0 8px; }
+  .sw { width: 10px; height: 10px; display: inline-block; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; flex: 1; }
+  .card { background: var(--white); border-radius: 14px; border: 1px solid var(--line); padding: 14px 16px; }
+  .card h3 { font-size: 16px; margin-bottom: 8px; }
+  .card li { font-size: 15px; line-height: 1.42; margin: 5px 0; }
+  .card ol, .card ul { margin: 0; padding-left: 1.2em; }
+  .okh { color: var(--ok); }
+  .nh { color: var(--issue); }
+
+  .twoenv { display: grid; grid-template-columns: 340px 1fr 1fr; gap: 14px; flex: 1; min-height: 0; }
+  .twoenv img { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; max-height: 640px; }
+  .pass { background: var(--ok-bg); border-radius: 14px; padding: 16px 16px 12px; }
+  .pass h3 { color: var(--ok); font-size: 15px; letter-spacing: .08em; margin-bottom: 8px; }
+  .pass li { font-size: 16px; line-height: 1.45; margin: 6px 0; }
+  .bigv { font-size: 28px; font-weight: 750; }
+
+  .foot { margin-top: auto; display: flex; justify-content: space-between; color: #8d867b; font-size: 12px; padding-top: 8px; }
+
+  #bar { height: 58px; display: flex; align-items: center; gap: 10px; padding: 0 16px; color: #efe8dc; background: #0c1016; }
+  #bar button { background: #243140; color: #fff; border: 0; border-radius: 8px; padding: 8px 14px; font-size: 14px; cursor: pointer; }
+  #bar button:hover { background: #31445c; }
+  .nav-title { flex: 1; font-size: 14px; color: #d9d0c3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #count { font-variant-numeric: tabular-nums; color: #f0c48a; font-weight: 700; }
+  .dots { display: flex; gap: 5px; }
+  .dots i { width: 7px; height: 7px; border-radius: 99px; background: #3a4654; display: block; }
+  .dots i.on { background: #f0c48a; }
+</style>
+</head>
+<body>
+<div id="viewport">
+  <div id="fit">
+    <div id="stage">
+
+      <section class="slide cover on">
+        <div class="left">
+          <div class="kicker">Filling test · Issue / Root cause</div>
+          <h1>SDA 1 L filling test<br>First run, 50 bags</h1>
+          <p class="lead">1 October 2026. All four findings are one event: lumpy powder did not leave the weigh hopper cleanly. The gate blocked, the walls filmed over, and the weight Ishida had counted did not all arrive in the bag.</p>
+          <div class="meta">
+            <div><b>Nominal weight</b>200 g / bag</div>
+            <div><b>On the line</b>09:28 – 11:57</div>
+            <div><b>Ruled out</b>Load cell, room climate</div>
+          </div>
+        </div>
+        <div class="right">
+          <img src="media/line.jpg" alt="SDA filling line, operators at the isolator" />
+          <div class="cap">Filling line · 1 Oct 2026, 09:28</div>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="pad">
+          <div class="kicker">Ruled out first</div>
+          <h2 class="st">Before the run, the scale and the room both passed</h2>
+          <p class="sub">Those two results move the root cause off the instrument and off the room. The weight gap has to be found on the powder path.</p>
+          <div class="twoenv" style="margin-top:16px">
+            <img src="media/hobo.jpg" alt="HOBO MX logger reading 20.67°C and 31.6% RH" />
+            <div class="pass">
+              <h3>ROOM · INSIDE SPEC</h3>
+              <p class="bigv">20.67°C<br>31.6% RH</p>
+              <ul>
+                <li>Temperature spec is 19–27°C. The reading sits in the middle.</li>
+                <li>Humidity spec is 30–40% RH. 31.6% passes, only 1.6 points above the floor, on the dry side.</li>
+                <li>The logger shows MEMORY / LOGGING. This is a stored reading, not a glance.</li>
+                <li>Room humidity did not exceed the limit. The film is not “the room was too wet.”</li>
+              </ul>
+            </div>
+            <div class="pass">
+              <h3>ISHIDA · PASSED BEFORE THE RUN</h3>
+              <p class="bigv">Unit 5<br>600 g calibration</p>
+              <ul>
+                <li>Weight checks at 200 g, 400 g, and 600 g all passed.</li>
+                <li>200 g is this run’s nominal bag weight. A static weight passed it.</li>
+                <li>The first three bags disagreeing with MT is not an uncalibrated load cell.</li>
+                <li>Calibration checks a weight. Lumps, film, and an incomplete dump are invisible to a weight.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="foot"><span>SDA 1 L · 1 Oct 2026</span><span>02</span></div>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="pad">
+          <div class="kicker">Overview</div>
+          <h2 class="st">Left: issue. Right: root cause.</h2>
+          <table class="rca">
+            <thead>
+              <tr><th></th><th>ISSUE</th><th>ROOT CAUSE</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td><span class="h">First three bags: Ishida and MT do not match</span>Ishida reads 203.4, 200.9, and 201.1 g. Bag 1 is +3.4 g versus 200 g, the only bag beyond +2 g. Bags 2 and 3 are back in the pack.</td>
+                <td><span class="h">Powder in the hopper did not all reach the bag</span>Lumps and wall film separate the weight Ishida already counted from the weight MT sees in the bag. Bag 1 also carried a startup slug. The load cell passed before the run. The three MT readings are not in this pack, so the gram gap is not calculated.</td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td><span class="h">SDA lumps blocked the cut gate</span>The line lengthened the vibration time. The video does not show the jam. It shows hard lumps already in the hopper, upstream of the gate.</td>
+                <td><span class="h">Lumps bridged the opening. Vibration was too short.</span>Lumps from the raw material do not pass the gate easily, and the fines are sticky, so a seated lump builds a bridge. Longer vibration breaks this bridge. It does not remove the lumps from the raw material.</td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td><span class="h">Powder stuck on the cut gate and weigh hopper</span>At 11:57 the removed chute is mirror-bright above the midline and filmed below it, thickest in the corners. The infeed grate is caked on the right rim only.</td>
+                <td><span class="h">Sticky fines were smeared onto stainless by the lumps</span>Once a film exists, the next dose sticks to the film, not to bare metal. No knocker or air knife is visible. Room RH is inside spec and on the dry side. This photo is a dry film, not room condensation.</td>
+              </tr>
+              <tr>
+                <td>4</td>
+                <td><span class="h">The raw material contains lumps</span>Before the test, Unit 5 was calibrated at 600 g, and the 200 / 400 / 600 g checks passed. The lumps were seen after that pass, as soon as powder entered the hopper.</td>
+                <td><span class="h">The lumps came in with the raw material. This is where it starts.</span>They sit on the powder surface, before the cut gate. They are the common start of issues 1 to 3: lumps block the gate, broken lumps smear the wall, and residue makes the two scales disagree.</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="foot"><span>Nominal target 200 g · detail on pages 6 and 9</span><span>03</span></div>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="pad">
+          <div class="kicker">One chain</div>
+          <h2 class="st">How the four issues connect</h2>
+          <p class="sub">Calibration and the room sit outside this chain. They passed, so they are not one of the five steps.</p>
+          <div class="chain" style="margin-top:18px">
+            <div class="step"><div class="n">01 · RAW MATERIAL</div><strong>Hard lumps are already in the hopper</strong><p>Video WA0006. Whole pieces sit on the powder. The gate did not cut them.</p></div>
+            <div class="step"><div class="n">02 · GATE</div><strong>Lumps bridge the cut gate</strong><p>Line record. The original vibration time does not break that bridge.</p></div>
+            <div class="step"><div class="n">03 · ACTION</div><strong>Vibration time increased</strong><p>It breaks the bridge. It also smears more sticky powder. It does not replace a screen.</p></div>
+            <div class="step"><div class="n">04 · FILM</div><strong>Gate and hopper keep a film</strong><p>Lower chute at 11:57, and the grate rim. That film is weight that never entered the bag.</p></div>
+            <div class="step"><div class="n">05 · BAG WEIGHT</div><strong>Ishida ≠ MT</strong><p>Bag 1 at 203.4 g is the startup slug. The next 49 bags settle at 200.98 g.</p></div>
+          </div>
+          <div class="call" style="margin-top:12px">The load cell answers “how much is in the hopper now.” MT answers “how much ended up in the bag.” Powder left on the gate or the wall splits those two numbers. The photos and videos show that something was left behind.</div>
+          <div class="pics" style="margin-top:10px; grid-template-columns: 1fr 1fr 1fr;">
+            <figure>
+              <img src="media/lumps.jpg" alt="Hard lumps on the powder surface in the weigh hopper" style="height:220px" />
+              <figcaption>01 Lumps on the hopper powder. Video on page 7.</figcaption>
+            </figure>
+            <figure>
+              <img src="media/grate-close.jpg" alt="Powder caked on one side of the infeed grate" style="height:220px" />
+              <figcaption>04 One-sided cake on the grate. Video on page 8.</figcaption>
+            </figure>
+            <figure>
+              <img src="media/chute.jpg" alt="Film on the lower half of the discharge chute" style="height:220px" />
+              <figcaption>04 Chute bright above, filmed below. 11:57.</figcaption>
+            </figure>
+          </div>
+          <div class="foot"><span>The action taken covers step 03 only</span><span>04</span></div>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="pad">
+          <div class="kicker">Issue 1 · Weight</div>
+          <h2 class="st">The first three bags disagree. Bag 1 is the outlier.</h2>
+          <div class="stats">
+            <div class="stat"><b>203.4 g</b><span>Bag 1 · +3.4 g vs target</span></div>
+            <div class="stat"><b>200.9 / 201.1</b><span>Bags 2 and 3, back in the pack</span></div>
+            <div class="stat"><b>201.03 g</b><span>Mean of 50 · SD 0.60 g</span></div>
+            <div class="stat"><b>200.98 g</b><span>Without bag 1 · SD 0.50 g</span></div>
+            <div class="stat"><b>49 / 50</b><span>Inside 200 ± 2 g</span></div>
+          </div>
+          <div class="cols" style="margin-top:8px">
+            <div class="col issue">
+              <h3>ISSUE</h3>
+              <ul>
+                <li>The first three bags were weighed on Ishida and on MT. The two numbers do not match.</li>
+                <li>Ishida side: 203.4, 200.9, 201.1 g. Mean of the first three is 201.80 g. Mean of bags 4–50 is 200.98 g. Almost all of that gap is bag 1.</li>
+                <li>Range is 4.0 g (199.4–203.4). Only bag 5 (199.8 g) and bag 6 (199.4 g) are under 200 g.</li>
+                <li>On-screen Average, S.D., MAX, MIN, and Range are all 0. That column was not calculated. The next page is recomputed from the 50 lines.</li>
+                <li>T.Weight 11.2 kg, T.Count 56. The 50 bags add up to only 10.052 kg. The extra 6 dumps have no bag number.</li>
+              </ul>
+              <p class="note">Screen CLR 10:44, machine time 11:38, photo time 11:27. No written tolerance was in this pack, so this is the spread around 200 g, not a pass/fail call.</p>
+            </div>
+            <div class="col cause">
+              <h3>ROOT CAUSE</h3>
+              <p><span class="tag see">Seen</span>Bag 1 is clearly heavy. The chute and the grate hold residue. Hard lumps sit on the hopper powder.</p>
+              <p style="margin-top:8px"><span class="tag inf">Inferred</span>Ishida counts the hopper weight before discharge. Powder stuck on the cut gate or the wall is missing from the bag MT weighs. If the next bag shakes that residue loose, that bag runs heavy. Bag 1 at +3.4 g fits a startup slug letting go at once.</p>
+              <p style="margin-top:8px"><span class="tag inf">Inferred</span>If bags 2 and 3 still miss MT, that looks like a fixed offset: empty-bag tare not the same, or a thin film left on every bag. That is a second factor, separate from the startup slug.</p>
+              <p style="margin-top:8px"><span class="tag gap">Missing</span>The three MT readings, the empty-bag tare, and proof both scales weighed the same bag. Without those, the gram difference cannot be stated.</p>
+              <p style="margin-top:8px"><span class="tag see">Ruled out</span>Unit 5 was calibrated at 600 g. The 200 / 400 / 600 g checks passed. This load cell is not the root cause.</p>
+            </div>
+          </div>
+          <div class="foot"><span>Detail and the curve are on the next page</span><span>05</span></div>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="pad">
+          <div class="kicker">Issue 1 · 50-bag detail</div>
+          <h2 class="st">One startup bag runs high. The rest sit near 201 g.</h2>
+          <svg id="chart" viewBox="0 0 820 250" width="1504" height="250" style="margin-top:4px"></svg>
+          <div class="legend">
+            <span><i class="sw" style="background:#fde2d4"></i>Above 201.5 g, including bag 1 at 203.4</span>
+            <span><i class="sw" style="background:#e7f0f8"></i>Below 200.0 g: bags 5 and 6 only</span>
+            <span>Orange line is the 200 g target. Versus 200 g: ±1 g holds 31 bags (62%), ±2 g holds 49 bags (98%).</span>
+          </div>
+          <div class="grid50" id="grid50"></div>
+          <div class="foot"><span>Source: Ishida “3 Log 1 window”. All 50 lines are readable on the photo. The statistics column is 0 and was not used.</span><span>06</span></div>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="pad">
+          <div class="kicker">Issue 2 · Cut gate</div>
+          <h2 class="st">Lumps blocked the gate. Longer vibration is containment, not the fix.</h2>
+          <div class="cols" style="margin-top:12px">
+            <div class="col issue" style="display:grid; grid-template-columns: 250px 1fr; gap: 12px;">
+              <div class="phone">
+                <video src="media/lumps.mp4" poster="media/lumps.jpg" controls playsinline preload="metadata"></video>
+                <div class="phcap">Video · hard lumps on the hopper powder, about 6 seconds. The machine is stopped.</div>
+              </div>
+              <div>
+                <h3>ISSUE</h3>
+                <ul>
+                  <li>SDA lumps blocked the cut gate.</li>
+                  <li>Vibration time was lengthened on the line to move the blocked powder.</li>
+                  <li>This video shows hard lumps sitting on the fines. The edges stay sharp. They do not slump into the powder.</li>
+                  <li>The gate is not moving. The jam itself is a line record, not a frame in this clip.</li>
+                </ul>
+              </div>
+            </div>
+            <div class="col cause">
+              <h3>ROOT CAUSE</h3>
+              <ul>
+                <li><span class="tag see">Seen</span>The lumps are in the hopper before they reach the gate. They are a grade coarser than the fines, so a small opening seats them first.</li>
+                <li><span class="tag inf">Inferred</span>Sticky fines pack into the gap between a lump and the opening and build a bridge. Flow stops, and the gate does not close clean.</li>
+                <li><span class="tag inf">Inferred</span>The original vibration time was shorter than this lot needed to break the bridge. After it was lengthened, the bridge collapsed. That is the improvement the line saw.</li>
+                <li><span class="tag gap">Limit</span>Longer vibration does not reduce lumps in the raw material. Too long, and the hopper is overfed and sticky powder is smeared further, so bag-weight spread can grow. The 50 lines at 11:27 do not show whether they are before or after the change.</li>
+              </ul>
+              <p class="note">After the change, run another set and recompute the mean and SD from the lines. Bag 1 should not be 203.4 g again.</p>
+            </div>
+          </div>
+          <div class="foot"><span>Video VID-20261001-WA0006</span><span>07</span></div>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="pad">
+          <div class="kicker">Issue 3 · Sticking</div>
+          <h2 class="st">Powder stuck on the discharge path. That film is the bag-weight gap.</h2>
+          <div class="split3" style="margin-top:12px">
+            <div class="col issue">
+              <h3>ISSUE</h3>
+              <div class="pics">
+                <figure>
+                  <img src="media/chute.jpg" alt="Removed stainless chute with a dull film on the lower half" style="height:360px" />
+                  <figcaption>Chute removed at 11:57. Mirror finish above, dull film below the midline, thicker in the corners.</figcaption>
+                </figure>
+                <figure>
+                  <video src="media/grate.mp4" poster="media/grate-close.jpg" controls playsinline preload="metadata" style="width:100%; height:360px; object-fit:cover; border-radius:10px; background:#111; display:block"></video>
+                  <figcaption>Infeed grate, about 10 seconds. Press play. Powder is caked on the right rim, not a uniform dusting. Around 3 seconds someone seems to say “discharge.” The room is loud.</figcaption>
+                </figure>
+              </div>
+              <p style="margin-top:8px">Two places hold powder: the chute downstream of the cut gate, and the grate further upstream. In the lump video the hopper wall is still mostly bright. The thick film is on the discharge path, not on the upper wall.</p>
+            </div>
+            <div class="col cause">
+              <h3>ROOT CAUSE</h3>
+              <ul>
+                <li><span class="tag see">Seen</span>The residue is a smeared film. The upper chute is still bare and the lower half is fogged over, so powder was wiped along the flowing lower half, not wetted evenly over the whole chute.</li>
+                <li><span class="tag inf">Inferred</span>Lumps are crushed as they pass the gate and paint sticky fines onto the metal. After the film forms, new powder sticks to the film and the layer grows.</li>
+                <li><span class="tag see">Seen</span>The grate is caked on one side only. Powder stopped there. The whole mesh was not passing powder normally.</li>
+                <li><span class="tag inf">Ruled out</span>HOBO reads 31.6% RH, inside 30–40% and on the dry side. The 11:57 wall has no droplets. Room humidity is not the cause of this film.</li>
+                <li><span class="tag gap">Still to check</span>Moisture in the raw material, and whether the chute was fully dry after cleaning. The photo cannot separate “powder stuck” from “washed and not dried.” The fine specks on the lower half look like either. Photograph the empty chute after cleaning, before the next feed.</li>
+              </ul>
+              <p class="note" style="margin-top:10px">This film is the mechanism of issue 1: part of the grams counted in the hopper never entered the bag.</p>
+            </div>
+          </div>
+          <div class="foot"><span>Chute at 11:57 · grate video VID-20261001-WA0004</span><span>08</span></div>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="pad">
+          <div class="kicker">Issue 4 · Raw material</div>
+          <h2 class="st">The lumps are already in the hopper. Calibration passed, so the cause is the material.</h2>
+          <div class="cols" style="margin-top:12px">
+            <div class="col issue" style="display:grid; grid-template-columns: 250px 1fr; gap:12px">
+              <div>
+                <img src="media/lumps.jpg" alt="Cubic lumps sitting on the powder in the weigh hopper" style="width:250px; height:460px; object-fit:cover; border-radius:16px; display:block" />
+                <p class="note">Close view of the lumps. The full clip is on page 7. The machine is stopped.</p>
+              </div>
+              <div>
+                <h3>ISSUE</h3>
+                <ul>
+                  <li>The raw material contains lumps. They are cubes and flakes, sitting on the cone of fines, not sunk into it.</li>
+                  <li>This is the state before the cut gate. The gate did not make these pieces.</li>
+                  <li>The same day, before the test, Ishida finished two checks and both passed: Unit 5 calibrated at 600 g, and weight checks at 200 g, 400 g, and 600 g.</li>
+                </ul>
+              </div>
+            </div>
+            <div class="col cause">
+              <h3>ROOT CAUSE</h3>
+              <ul>
+                <li><span class="tag see">Seen</span>The lumps entered as lumps. The hopper did not break them. The grate holds stuck fines. Nothing in the video shows the mesh stopping these lumps.</li>
+                <li><span class="tag see">Seen</span>Static weights passed at 200, 400, and 600 g. On the same scale, weights pass and real powder does not. The difference is how the powder flows, not the load cell.</li>
+                <li><span class="tag inf">Inferred</span>This lot was not screened or delumped before the Ishida. Vibration time was added after the gate was already blocked. That is a downstream patch.</li>
+                <li><span class="tag inf">Common cause</span>Issues 1, 2, and 3 leave from here. Lumps block the gate, broken lumps smear the wall, and residue makes Ishida and MT disagree.</li>
+              </ul>
+              <p class="note">Write the passed calibration into the record. It clears the instrument, and it points the next run at raw-material preparation rather than another calibration.</p>
+            </div>
+          </div>
+          <div class="foot"><span>Calibration is the line record · lumps are video WA0006</span><span>09</span></div>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="pad">
+          <div class="kicker">Next step</div>
+          <h2 class="st">What is already done, and what has not closed the cause</h2>
+          <div class="cards" style="margin-top:14px">
+            <div class="card">
+              <h3 class="okh">Already done this run</h3>
+              <ul>
+                <li>Unit 5 calibrated at 600 g. Checks at 200 / 400 / 600 g passed. That clears the load cell.</li>
+                <li>After lumps blocked the cut gate, vibration time was lengthened. Powder could move again. That is containment.</li>
+                <li>The room was logged: 20.67°C, 31.6% RH, inside spec.</li>
+                <li>The 50 Ishida lines were kept. The on-screen statistics are 0. Use the lines from here on.</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3 class="nh">Close these before the next run</h3>
+              <ol>
+                <li>Screen or delump the raw material before the hopper. Vibration time does not replace that.</li>
+                <li>After cleaning and before feed, photograph the empty chute and hopper. Open them again after 10 bags and see whether the film returns.</li>
+                <li>Record Ishida and MT on the same bag, with the empty-bag tare written down, for at least the first 10 bags. Only Ishida is on record now.</li>
+                <li>After the vibration change, rerun and recompute mean and SD. Bag 1 should not be another 203.4 g startup bag.</li>
+                <li>Reconcile T.Count 56 with the 50 bags. State whether the extra 6 dumps were trials, empty cycles, or rejects.</li>
+                <li>Add lump condition and raw-material moisture to the batch record. Keep logging room temperature and humidity. They are not the cause of this run.</li>
+              </ol>
+            </div>
+          </div>
+          <div class="call" style="margin-top:14px">The next run has two checks only: bag 1 is no longer an outlier, and on the same bag, after empty-bag tare, the Ishida–MT gap matches the powder left on the gate.</div>
+          <div class="foot"><span>Containment is not the same as a closed root cause</span><span>10</span></div>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="pad">
+          <div class="kicker">Evidence and limits</div>
+          <h2 class="st">What this briefing uses, and what it leaves open</h2>
+          <div class="cols" style="margin-top:12px">
+            <div class="col issue">
+              <h3>EVIDENCE USED</h3>
+              <ul>
+                <li>Filling-line photo, 1 Oct 2026, 09:28.</li>
+                <li>HOBO MX temp/RH: 20.67°C, 31.6% RH. Marked limits 19–27°C and 30–40% RH.</li>
+                <li>Ishida “3 Log 1 window”: weights for bags 1–50, T.Weight 11.2 kg, T.Count 56, CLR 10:44, machine time 11:38. Photo time 11:27. Statistics column is all zeros; figures were recomputed from the 50 lines.</li>
+                <li>Inside wall of the discharge chute, 11:57.</li>
+                <li>Video WA0006, 6 seconds, lumps in the weigh hopper.</li>
+                <li>Video WA0004, 10 seconds, powder on the infeed grate. Around 3 seconds someone seems to say “discharge.” The room is loud, so that is not treated as a formal record.</li>
+                <li>Line account: the first three bags disagree between the two scales; lumps blocked the cut gate and vibration time was increased; powder stuck on the cut gate and the hopper; calibration and the three-point weight check passed before the test.</li>
+              </ul>
+            </div>
+            <div class="col cause">
+              <h3>LEFT UNSOLVED ON PURPOSE</h3>
+              <ul>
+                <li>The three MT gram values. They are not in the photos or the videos. This briefing does not guess the gap.</li>
+                <li>Vibration time in seconds, before and after, and whether the 50 lines at 11:27 are before or after the change.</li>
+                <li>A written bag-weight tolerance. Without a spec, 201.03 g is not called pass or fail. The spread is versus the 200 g nominal only.</li>
+                <li>What the 6 dumps are, beyond the 50 bags, inside T.Count 56.</li>
+                <li>Whether the fine specks on the lower chute are powder or dry wash marks. That needs an empty-chute photo before feed.</li>
+                <li>Both videos are of a stopped machine. Neither shows the gate jamming, nor discharge after the vibration time was lengthened.</li>
+              </ul>
+              <p class="note">The 50 bags total 10,051.6 g. Mean 201.032 g, sample SD 0.600 g, median 200.95 g, minimum 199.4 g (bag 6), maximum 203.4 g (bag 1).</p>
+            </div>
+          </div>
+          <div class="foot"><span>1 Oct 2026 · SDA 1 L first run · issues and root causes</span><span>11</span></div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+<div id="bar">
+  <button type="button" id="prev">Previous</button>
+  <button type="button" id="next">Next</button>
+  <a href="index.html" style="color:#f0c48a;text-decoration:none;font-size:14px;margin-left:6px">中文</a>
+  <div class="dots" id="dots"></div>
+  <div class="nav-title" id="title"></div>
+  <span id="count"></span>
+</div>
+<script>
+const W = [203.4,200.9,201.1,200.3,199.8,199.4,201.0,201.5,200.8,201.1,201.8,200.4,201.2,200.8,200.7,200.7,201.0,201.0,200.9,201.4,200.6,200.9,201.0,201.1,201.1,200.6,201.6,201.4,201.6,202.0,201.6,202.0,201.8,201.6,201.4,201.0,200.9,200.7,201.2,200.8,201.0,200.8,200.8,200.6,200.8,200.6,200.8,200.7,200.6,200.8];
+const titles = ["Cover","What was already ruled out","Four issues and root causes","How the four connect","First three bags","50-bag detail","Lumps at the cut gate","Powder stuck on the path","Raw-material lumps","Done, and still open","Evidence and limits"];
+const slides = [...document.querySelectorAll(".slide")];
+let i = 0;
+const dots = document.getElementById("dots");
+slides.forEach((_, n) => {
+  const d = document.createElement("i");
+  d.onclick = () => go(n);
+  dots.appendChild(d);
+});
+function go(n) {
+  i = (n + slides.length) % slides.length;
+  slides.forEach((s, k) => s.classList.toggle("on", k === i));
+  [...dots.children].forEach((d, k) => d.classList.toggle("on", k === i));
+  document.getElementById("title").textContent = titles[i];
+  document.getElementById("count").textContent = (i + 1) + " / " + slides.length;
+  location.hash = String(i + 1);
+}
+document.getElementById("prev").onclick = () => go(i - 1);
+document.getElementById("next").onclick = () => go(i + 1);
+document.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowRight" || e.key === "PageDown" || e.key === " ") { e.preventDefault(); go(i + 1); }
+  if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); go(i - 1); }
+  if (e.key === "Home") go(0);
+  if (e.key === "End") go(slides.length - 1);
+});
+function fit() {
+  const s = Math.min(innerWidth / 1600, (innerHeight - 58) / 900);
+  const fit = document.getElementById("fit");
+  fit.style.width = (1600 * s) + "px";
+  fit.style.height = (900 * s) + "px";
+  document.getElementById("stage").style.transform = "scale(" + s + ")";
+}
+addEventListener("resize", fit);
+
+function draw() {
+  const svg = document.getElementById("chart");
+  const ymin = 198.6, ymax = 204.0, L = 44, T = 16, R = 12, B = 28, Wd = 820, H = 250;
+  const pw = Wd - L - R, ph = H - T - B;
+  const X = (k) => L + k * (pw / 49);
+  const Y = (v) => T + (ymax - v) / (ymax - ymin) * ph;
+  const ns = "http://www.w3.org/2000/svg";
+  const el = (name, attrs) => { const n = document.createElementNS(ns, name); for (const k in attrs) n.setAttribute(k, attrs[k]); return n; };
+  svg.appendChild(el("line", { x1: L, y1: Y(200), x2: Wd - R, y2: Y(200), stroke: "#c4552a", "stroke-width": 1.4 }));
+  svg.appendChild(el("line", { x1: L, y1: Y(201), x2: Wd - R, y2: Y(201), stroke: "#d9d0c3", "stroke-width": 1 }));
+  [199, 200, 201, 202, 203, 204].forEach((g) => {
+    svg.appendChild(el("text", { x: 4, y: Y(g) + 4, fill: "#8a8175", "font-size": 11 })).textContent = g;
+  });
+  const d = W.map((v, k) => (k ? "L" : "M") + X(k).toFixed(1) + "," + Y(v).toFixed(1)).join(" ");
+  svg.appendChild(el("path", { d, fill: "none", stroke: "#1e4d78", "stroke-width": 2 }));
+  W.forEach((v, k) => {
+    const hi = v > 201.5, lo = v < 200;
+    svg.appendChild(el("circle", { cx: X(k), cy: Y(v), r: hi || lo ? 4 : 2.4, fill: hi ? "#c4552a" : lo ? "#1e4d78" : "#1b2a3d" }));
+  });
+  svg.appendChild(el("text", { x: X(0) + 6, y: Y(203.4) - 6, fill: "#9a3b12", "font-size": 12, "font-weight": 700 })).textContent = "Bag 1  203.4";
+  for (let t = 0; t < 50; t += 5) {
+    svg.appendChild(el("text", { x: X(t) - 4, y: 246, fill: "#8a8175", "font-size": 11 })).textContent = String(t + 1);
+  }
+  const grid = document.getElementById("grid50");
+  W.forEach((v, k) => {
+    const c = document.createElement("div");
+    c.className = "cell" + (v > 201.5 ? " hi" : v < 200 ? " lo" : "");
+    c.innerHTML = '<span class="i">' + (k + 1) + '</span><span class="v">' + v.toFixed(1) + "</span>";
+    grid.appendChild(c);
+  });
+}
+draw();
+fit();
+go(location.hash ? Math.max(0, parseInt(location.hash.slice(1), 10) - 1) : 0);
+</script>
+</body>
+</html>
